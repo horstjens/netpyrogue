@@ -10,11 +10,14 @@ class ClientChannel(Channel):
     """
     This is the server representation of a single connected client.
     """
+    free_x = 0
 
     def __init__(self, *args, **kwargs):
         self.nickname = "anonymous"
         Channel.__init__(self, *args, **kwargs)
-        self.x = 0
+        self.x = ClientChannel.free_x
+        ClientChannel.free_x += 1
+
 
     def Close(self):
         self._server.DelPlayer(self)
@@ -24,7 +27,7 @@ class ClientChannel(Channel):
     ##################################
 
     def Network_message(self, data):
-        self._server.SendToAll({"action": "message", "message": data['message'], "who": self.nickname})
+        self._server.SendToAll({"action": "message", "message": data['message'], "who": self.nickname, "x": self.x})
 
     def Network_nickname(self, data):
         self.nickname = data['nickname']
