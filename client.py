@@ -3,12 +3,11 @@ from _thread import start_new_thread
 from sys import stdin
 from time import sleep
 
-from PodSixNet.Connection import connection, ConnectionListener
-
 from Directions import Directions
+from lib.PodSixNet_Library.Connection import connection, ConnectionListener
 
 global debug
-debug = True
+debug = False
 global running
 running = True
 

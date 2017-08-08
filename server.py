@@ -3,8 +3,8 @@ import sys
 from time import sleep
 from weakref import WeakKeyDictionary
 
-from PodSixNet.Channel import Channel
-from PodSixNet.Server import Server
+from lib.PodSixNet_Library.Channel import Channel
+from lib.PodSixNet_Library.Server import Server
 
 global running
 running = True
@@ -153,12 +153,14 @@ class GameServer(Server):
         [player.Send(data) for player in self.players]
 
     def Launch(self):
+        global running
         while running:
             self.Pump()
             try:
                 sleep(0.0001)
             except KeyboardInterrupt:
                 print("Caught [SIGTERM] (KeyboardInterrupt)\nExiting...")
+                running = False
 
 
 if __name__ == '__main__':
