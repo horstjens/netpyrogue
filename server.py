@@ -80,11 +80,15 @@ class ClientChannel(Channel):
         print("[Server] Player \"" + self.player_name + "\" moved to Direction \"" + str(data['direction']) + "\".")
 
         dx, dy = ClientChannel.movings[data['direction']]
+        if self.wallcheck(self.x + dx, self.y + dy):
+            dx, dy = 0, 0
+        # self.x += -dx
+        # self.y += -dy
+        self.x += dx
+        self.y += dy
 
-        print("[Server] Player \"" + self.player_name + "\" got new coordinates. dx: " + str(dx) + ", dy: " + str(dy))
-
-        self.x
-        # self.y
+        print("[Server] Player \"" + self.player_name + "\" got new coordinates. dx: " + str(dx) + ", dy: " + str(dy),
+              "x: " + str(self.x) + ", y: " + str(self.y))
 
     def Network_request_cords(self, data):
         print("[Server] Player \"" + self.player_name + "\" requested coordinates.")
@@ -95,7 +99,26 @@ class ClientChannel(Channel):
 
     def Network_request_dungeon(self, data):
         print("[Server] Player \"" + self.player_name + "\" requested the dungeon.")
-        self._server.SendToAll({"action": "got_dungeon", "the_dungeon": self.dungeon})
+        self.the_dungeon = []
+
+        #for line in self.dungeon:
+        #    for char in line:
+        #        print(char, end="")
+        #    print()
+
+        for line in self.dungeon:
+            line2 = []
+            for char in line:
+               line2.append(char)
+            self.the_dungeon.append(line2)
+        for p in self._server.players:
+            self.the_dungeon[p.y][p.x] = p.char
+
+        self._server.SendToAll({"action": "got_dungeon", "the_dungeon": self.the_dungeon})
+
+    def wallcheck(self, x, y, z=0):
+        target = ClientChannel.dungeon[y][x]
+        return target == "#"
 
 
 class GameServer(Server):
@@ -140,4 +163,13 @@ if __name__ == '__main__':
     else:
         host, port = sys.argv[1].split(":")
         s = GameServer(localaddr=(host, int(port)))
+
+        dungeon = ClientChannel.dungeon
+        d = []
+
+        for line in dungeon.splitlines():
+            d.append(list(line))
+
+        ClientChannel.dungeon = d
+
         s.Launch()

@@ -3,7 +3,6 @@ from _thread import start_new_thread
 from sys import stdin
 from time import sleep
 
-import os
 from PodSixNet.Connection import connection, ConnectionListener
 
 from Directions import Directions
@@ -38,29 +37,15 @@ class Client(ConnectionListener):
             elif input_string == "w":
                 print("Going north")
                 self.sendMove(Directions.North._value_)
-                # self.sendMove("North")
-                # connection.send({"action": "playermove", "direction": "North"})
-                # connection.Send({"action": "chat", "chat": input_string})
-                # connection.send({"action": "chat", "chat": "North"})
-                # connection.Send({"action": "playermove", "direction": input_string})
             elif input_string == "a":
-                print("Going east")
-                self.sendMove(Directions.East._value_)
-                # self.sendMove("East")
-                # connection.send({"action": "playermove", "direction": "East"})
-                # connection.send({"action": "playermove", "direction": input_string})
+                print("Going west")
+                self.sendMove(Directions.West._value_)
             elif input_string == "s":
                 print("Going south")
                 self.sendMove(Directions.South._value_)
-                # self.sendMove("South")
-                # connection.send({"action": "playermove", "direction": "South"})
-                # connection.send({"action": "playermove", "direction": input_string})
             elif input_string == "d":
-                print("Going west")
-                self.sendMove(Directions.West._value_)
-                # self.sendMove("West")
-                # connection.send({"action": "playermove", "direction": "West"})
-                # connection.send({"action": "playermove", "direction": input_string})
+                print("Going east")
+                self.sendMove(Directions.East._value_)
             else:
                 print("[System] Unrecognized input: " + input_string)
             connection.Send({"action": "request_cords", "abc": "xyz"})
@@ -70,11 +55,18 @@ class Client(ConnectionListener):
 
     def Network_got_cords(self, data):
         cordinates = data['x_cordinates'], data['y_cordinates']
-        for cordinate in cordinates:
-            print(cordinate)
+
+
+
+
 
     def Network_got_dungeon(self, data):
-        print("Dungeon:\n" + data['the_dungeon'])
+        d = data['the_dungeon']
+        for line in d:
+            for char in line:
+                print(char, end="")
+            print()
+            # print("Dungeon:\n" + data['the_dungeon'])
 
     def Network_players(self, data):
         if debug:
