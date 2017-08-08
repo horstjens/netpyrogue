@@ -36,16 +36,16 @@ class Client(ConnectionListener):
                 connection.Send({"action": "chat", "chat": input_string})
             elif input_string == "w":
                 print("Going north")
-                self.sendMove(Directions.North._value_)
+                self.sendMove(Directions.North.value)
             elif input_string == "a":
                 print("Going west")
-                self.sendMove(Directions.West._value_)
+                self.sendMove(Directions.West.value)
             elif input_string == "s":
                 print("Going south")
-                self.sendMove(Directions.South._value_)
+                self.sendMove(Directions.South.value)
             elif input_string == "d":
                 print("Going east")
-                self.sendMove(Directions.East._value_)
+                self.sendMove(Directions.East.value)
             else:
                 print("[System] Unrecognized input: " + input_string)
             connection.Send({"action": "request_cords", "abc": "xyz"})
@@ -55,10 +55,6 @@ class Client(ConnectionListener):
 
     def Network_got_cords(self, data):
         cordinates = data['x_cordinates'], data['y_cordinates']
-
-
-
-
 
     def Network_got_dungeon(self, data):
         d = data['the_dungeon']
@@ -70,8 +66,16 @@ class Client(ConnectionListener):
 
     def Network_players(self, data):
         if debug:
-            print("*** players: " + ", ".join([p for p in data['players']]))
+            print("[Debug] *** players: " + ", ".join([p for p in data['players']]))
             # Any players named "anonymous" have not entered a player_name yet
+
+    def Network_system_message(self, data):
+        print("[System] " + data['message'])
+
+    # def Network_server_data(self,data):#call(data['message'])
+
+    def Network_server_message(self, data):
+        print("[Server] " + data['message'])
 
     def Network_chat(self, data):
         print("[Chat] " + data['who'] + ": " + data['chat'])
@@ -104,5 +108,10 @@ if __name__ == '__main__':
         print("[System] You are now connected to " + host + ":" + port + ".")
         while running:
             c.ClientGameLoop()
-            sleep(0.001)
+            try:
+                sleep(0.001)
+            except KeyboardInterrupt:
+                print("[System] Quitting...")
+                running = False
+                break
         print("Lost connection to server")

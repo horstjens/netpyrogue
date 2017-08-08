@@ -6,6 +6,8 @@ from weakref import WeakKeyDictionary
 from PodSixNet.Channel import Channel
 from PodSixNet.Server import Server
 
+global running
+running = True
 
 class ClientChannel(Channel):
     """Game client representation"""
@@ -81,6 +83,7 @@ class ClientChannel(Channel):
 
         dx, dy = ClientChannel.movings[data['direction']]
         if self.wallcheck(self.x + dx, self.y + dy):
+            self.Send({"action": "system_message", "message": "You bumped into the incredible wall."})
             dx, dy = 0, 0
         # self.x += -dx
         # self.y += -dy
@@ -150,9 +153,12 @@ class GameServer(Server):
         [player.Send(data) for player in self.players]
 
     def Launch(self):
-        while True:
+        while running:
             self.Pump()
-            sleep(0.0001)
+            try:
+                sleep(0.0001)
+            except KeyboardInterrupt:
+                print("Caught [SIGTERM] (KeyboardInterrupt)\nExiting...")
 
 
 if __name__ == '__main__':
