@@ -1,8 +1,8 @@
-# netpyrogue
-python3 roguelike game demo with network for multiplayer, based on Podsixnet lib
+# NetPyRogue
+NetPyRouge is a rouge-like multiplayer-based game. It's networking capabilities are based on the PodSixNet library.
 
-to get this game running you need:
+Requirements for running this game:
 
-install the PodSixNet lib correctly on your system. see https://github.com/chr15m/PodSixNet/tree/python3
-
+- **Python 3.4**+ (because of e.g. Enums which were implemented in Python 3.4)
+- The PodSixNet library correctly installed on your system (see [PodSixNet at GitHub][https://github.com/chr15m/PodSixNet/tree/python3])
 
