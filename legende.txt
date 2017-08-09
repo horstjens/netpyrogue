@@ -1,0 +1,32 @@
+> Legende:
+
+>> Böden:
+
+>>> #: Mauer
+>>> .: Erde/Kiesboden
+>>> ;: Äußerst hügelige/r Erde/Kiesboden
+>>> _: Holzboden
+
+>> Treppen:
+
+>>> /: Treppe hinauf
+>>> \: Treppe hinunter
+
+>> Türen:
+
+>>> -: Einfache horizontale Tür
+>>> =: Gesicherte horizontale Tür
+>>> :: Horizontale Lasertür
+>>> ~: Morsche horizontale Tür
+>>> |: Einfache vertikale Tür
+>>> $: Vertikale Gittertür
+>>> (: Sicherheitsschleußentür (man kann nur von rechts nach links gehen)
+>>> ): Sicherheitsschleußentür (man kann nur von links nach rechts gehen)
+>>> U: Sicherheitsschleußentür (man kann nur von oben nach unten gehen)
+>>> {: Tresortüre (kann man nur von links aufschließen)
+>>> }: Tresortüre (kann man nur von rechts aufschließen)
+
+>> Barrikaden:
+
+>>> [
+>>> ]
