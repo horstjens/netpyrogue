@@ -34,11 +34,8 @@ class Item:
 
         while ClientChannel.wall_check(0, self.x, self.y, self.z):
             self.z = random.randint(0, len(ClientChannel.dungeon) - 1)
-            print("z:" + str(self.z))
             self.y = random.randint(1, len(ClientChannel.dungeon[self.z]) - 1)
-            print("y:" + str(self.y))
             self.x = random.randint(1, len(ClientChannel.dungeon[self.z][-1]) - 1)
-            print("x:" + str(self.x))
 
         # self.z = len(ClientChannel.dungeon)
         # print("z: " + str(self.z))
@@ -46,7 +43,8 @@ class Item:
         # print("y: " + str(self.y))
         # self.x = len(ClientChannel.dungeon[self.z - 1][-1])
         # print("x: " + str(self.x))
-        print("produced " + self.name)
+        print("[Server] Produced \"" + self.name + "\" at z:" + str(self.z) + ", y:" + str(self.y) + ", x:" + str(
+            self.x) + ".")
 
 
 class ClientChannel(Channel):
@@ -98,8 +96,10 @@ class ClientChannel(Channel):
     # Network specific callbacks
 
     def Network_chat(self, data):
-        print("[Server] Player \"" + self.player_name + "\" sent chat message \"" + data['chat'] + "\".")
-        self._server.SendToAll({"action": "chat", "chat": data['chat'], "who": self.player_name})
+        message = data['chat']
+        message = message[1:]
+        print("[Server] Player \"" + self.player_name + "\" sent chat message \"" + message + "\".")
+        self._server.SendToAll({"action": "chat", "chat": message, "who": self.player_name})
 
     # Will be called when the player enters his nickname ==> PLAYERJOIN
     def Network_nickname(self, data):
