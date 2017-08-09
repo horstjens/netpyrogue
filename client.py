@@ -20,7 +20,7 @@ class Client(ConnectionListener):
         player_name = stdin.readline().rstrip("\n")
         connection.Send({"action": "nickname", "player_name": player_name})
         self.inventory = {}
-        self.equipped_items= {}
+        self.equipped_items = {}
         t = start_new_thread(self.InputLoop, ())
 
     def ClientGameLoop(self):
@@ -53,9 +53,9 @@ class Client(ConnectionListener):
                 print("Your inventory:")
                 for item in self.inventory:
                     print("- {}".format(item))
-                print("You have these items equipped:")
-                for item in self.equipped_items:
-                    print("- {}".format(item))
+                # print("You have these items equipped:")
+                # for item in self.equipped_items:
+                #    print("- {}".format(item))
             else:
                 print("[System] Unrecognized input: " + input_string)
 
@@ -66,7 +66,6 @@ class Client(ConnectionListener):
 
     def Network_got_inventory(self, data):
         self.inventory = data['inventory']
-        self.equipped_items = data['equipped_items']
 
     def Network_got_dungeon(self, data):
         d = data['the_dungeon']
@@ -104,6 +103,7 @@ class Client(ConnectionListener):
 
     def Network_disconnected(self, data):
         print('[System] Server disconnected')
+        global running
         running = False
 
     def sendMove(self, direction):
