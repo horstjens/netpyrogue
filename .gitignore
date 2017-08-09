@@ -105,6 +105,7 @@ ENV/
 .idea
 .idea/*
 .idea/
+.idea/vcs.xml
 
 
 

@@ -1,10 +1,42 @@
+import os
 import random
 import sys
 from time import sleep
 from weakref import WeakKeyDictionary
 
-from PodSixNet.Channel import Channel
-from PodSixNet.Server import Server
+from lib.PodSixNet_Library.Channel import Channel
+from lib.PodSixNet_Library.Server import Server
+
+global running
+running = True
+
+
+class Item:
+    id = 0
+
+    def __init__(self):
+        self.id = Item.id
+        Item.id += 1
+
+        ClientChannel.items[self.id] = self
+
+        self.name = random.choice(("Destruktive Zerstörungsenergie", "deaktivierte Netzwerkkarte", "GNU Lizenzbrief",
+                                   "Metasploit", "Rubber Ducky", "USB Rubber Ducky"))
+        self.playerInventoryChar = ''
+        self.playerEquippedChar = ''
+        self.char = "*"
+
+        self.z = random.randint(0, len(ClientChannel.dungeon))
+        self.y = random.randint(1, len(ClientChannel.dungeon[self.z - 1]))
+        self.x = random.randint(1, len(ClientChannel.dungeon[self.z - 1][-1]))
+
+        # self.z = len(ClientChannel.dungeon)
+        # print("z: " + str(self.z))
+        # self.y = len(ClientChannel.dungeon[self.z - 1])
+        # print("y: " + str(self.y))
+        # self.x = len(ClientChannel.dungeon[self.z - 1][-1])
+        # print("x: " + str(self.x))
+        print("produced " + self.name)
 
 
 class ClientChannel(Channel):
@@ -12,23 +44,9 @@ class ClientChannel(Channel):
 
     free_x = 1
 
-    dungeon = """
-####################################################
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-####################################################
-"""
+    items = {}
+
+    dungeon = []
 
     movings = {
         1: (0, -1),
@@ -47,12 +65,19 @@ class ClientChannel(Channel):
         # If there are to many users which did not yet
         # enter a username (= anonymous) | Random: v v v v v v v
         self.player_name = "anonymous" + str(random.randrange(0, 101, 2))
+
         self.x = ClientChannel.free_x
         self.y = 2
+        self.z = 0
         ClientChannel.free_x += 1
-        self.char = str(self.x)
+
         # self.y = self.free_y
         # ClientChannel.free_y += 1
+
+        self.char = chr(self.x + 96)  # Ascii char code (97 - 172 = a - z)
+
+        self.inventory = {"Mysterious book": 1}
+        self.hp = 100
 
         Channel.__init__(self, *args, **kwargs)
 
@@ -80,7 +105,11 @@ class ClientChannel(Channel):
         print("[Server] Player \"" + self.player_name + "\" moved to Direction \"" + str(data['direction']) + "\".")
 
         dx, dy = ClientChannel.movings[data['direction']]
-        if self.wallcheck(self.x + dx, self.y + dy):
+        if self.wall_check(self.x + dx, self.y + dy, self.z):
+            self.Send({"action": "system_message", "message": "You bumped into the incredible wall."})
+            dx, dy = 0, 0
+        if self.player_check(self.x + dx, self.y + dy, self.z):
+            self.Send({"action": "system_message", "message": "You bumped into the other player, he hates ya now."})
             dx, dy = 0, 0
         # self.x += -dx
         # self.y += -dy
@@ -88,11 +117,11 @@ class ClientChannel(Channel):
         self.y += dy
 
         print("[Server] Player \"" + self.player_name + "\" got new coordinates. dx: " + str(dx) + ", dy: " + str(dy),
-              "x: " + str(self.x) + ", y: " + str(self.y))
+              "x: " + str(self.x) + ", y: " + str(self.y) + ", z: " + str(self.z))
 
     def Network_request_cords(self, data):
         print("[Server] Player \"" + self.player_name + "\" requested coordinates.")
-        self.Send({"action": "got_cords",
+        self.Send({"action":       "got_cords",
                    "x_cordinates": [p.x for p in self._server.players if p.player_name == self.player_name],
                    "y_cordinates": [p.y for p in self._server.players if p.player_name == self.player_name],
                    })
@@ -101,24 +130,46 @@ class ClientChannel(Channel):
         print("[Server] Player \"" + self.player_name + "\" requested the dungeon.")
         self.the_dungeon = []
 
-        #for line in self.dungeon:
+        # for line in self.dungeon:
         #    for char in line:
         #        print(char, end="")
         #    print()
 
-        for line in self.dungeon:
+        for line in self.get_player_dungeon():
             line2 = []
             for char in line:
-               line2.append(char)
+                line2.append(char)
             self.the_dungeon.append(line2)
+        for i in ClientChannel.items.values():
+            if i.z == self.z:
+                self.the_dungeon[i.y][i.x] = i.char
         for p in self._server.players:
             self.the_dungeon[p.y][p.x] = p.char
 
-        self._server.SendToAll({"action": "got_dungeon", "the_dungeon": self.the_dungeon})
+        self.Send({"action": "got_dungeon", "the_dungeon": self.the_dungeon})
 
-    def wallcheck(self, x, y, z=0):
-        target = ClientChannel.dungeon[y][x]
-        return target == "#"
+    def wall_check(self, x, y, z):
+        return ClientChannel.dungeon[z][y][x] == "#"
+
+    def player_check(self, x, y, z):
+        for p in self._server.players:
+            if p.char != self.char:
+                if p.x == x and p.y == y and p.z == z:
+                    return True
+        return False
+
+    def get_player_dungeon(self):
+        return ClientChannel.dungeon[self.z]
+
+    def send_system_message(self, message):
+        self.Send({"action": "system_message", "message": message})
+
+    def send_server_message(self, message):
+        self.Send({"action": "server_message", "message": message})
+
+    def Network_request_inventory(self, data):
+        # self.Send({"action": "got_inventory", "inventory": self.inventory, "equipped_items": self.equippedItems})
+        print(self.player_name + " requested his inventory")
 
 
 class GameServer(Server):
@@ -150,26 +201,48 @@ class GameServer(Server):
         [player.Send(data) for player in self.players]
 
     def Launch(self):
-        while True:
+        global running
+        while running:
             self.Pump()
-            sleep(0.0001)
+            try:
+                sleep(0.0001)
+            except KeyboardInterrupt:
+                print("Caught [SIGTERM] (KeyboardInterrupt)\nExiting...")
+                running = False
 
 
 if __name__ == '__main__':
+
     # get command line argument of server, port
     if len(sys.argv) != 2:
         print("[Server] Usage:", sys.argv[0], "host:port")
         print("[Server] e.g.", sys.argv[0], "localhost:31425")
     else:
+
+        print("Reading dungeons...")
+        for filename in os.listdir("data/maps"):
+            print("Found dungeon: " + filename)
+            dungeon_content = open("data/maps/" + filename, "r").read()
+            ClientChannel.dungeon.append(dungeon_content)
+
+        for z, dungeon in enumerate(ClientChannel.dungeon):
+            d = []
+            for line in dungeon.splitlines():
+                d.append(list(line))
+            ClientChannel.dungeon[z] = d
+
+        for x in range(10):
+            Item()
+        # print(ClientChannel.items)
         host, port = sys.argv[1].split(":")
         s = GameServer(localaddr=(host, int(port)))
 
-        dungeon = ClientChannel.dungeon
-        d = []
+        # dungeon = ClientChannel.dungeon
+        # d = []
 
-        for line in dungeon.splitlines():
-            d.append(list(line))
+        # for line in dungeon.splitlines():
+        #    d.append(list(line))
 
-        ClientChannel.dungeon = d
+        # ClientChannel.dungeon = d
 
         s.Launch()
