@@ -24,7 +24,7 @@ class Item:
 
         self.name = random.choice(("Destruktive Zerstörungsenergie", "deaktivierte Netzwerkkarte", "GNU Lizenzbrief",
                                    "Metasploit", "Rubber Ducky", "USB Rubber Ducky"))
-        self.playerInventoryChar = ""
+        self.playerInventoryChar = ''
         self.isEquipped = False
         self.char = "*"
 
@@ -148,7 +148,7 @@ class ClientChannel(Channel):
                 line2.append(char)
             the_dungeon.append(line2)
         for item in ClientChannel.items.values():
-            if item.z == self.z:
+            if item.z == self.z and item.playerInventoryChar == '':
                 the_dungeon[item.y][item.x] = item.char
         for player in self._server.players:
             the_dungeon[player.y][player.x] = player.char
@@ -160,7 +160,7 @@ class ClientChannel(Channel):
 
     def item_check(self, x, y, z):
         for item in ClientChannel.items.values():
-            if item.x == x and item.y == y and item.z == z:
+            if item.x == x and item.y == y and item.z == z and item.playerInventoryChar == '':
                 return True
         return False
 
@@ -254,7 +254,7 @@ if __name__ == '__main__':
                 d.append(list(line))
             ClientChannel.dungeon[z] = d
 
-        for x in range(10):
+        for x in range(20):
             Item()
         # print(ClientChannel.items)
         host, port = sys.argv[1].split(":")
