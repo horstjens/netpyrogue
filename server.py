@@ -28,9 +28,17 @@ class Item:
         self.isEquipped = False
         self.char = "*"
 
-        self.z = random.randint(0, len(ClientChannel.dungeon))
-        self.y = random.randint(1, len(ClientChannel.dungeon[self.z - 1]))
-        self.x = random.randint(1, len(ClientChannel.dungeon[self.z - 1][-1]))
+        self.z = 0
+        self.x = 0
+        self.y = 0
+
+        while ClientChannel.wall_check(0, self.x, self.y, self.z):
+            self.z = random.randint(0, len(ClientChannel.dungeon) - 1)
+            print("z:" + str(self.z))
+            self.y = random.randint(1, len(ClientChannel.dungeon[self.z]) - 1)
+            print("y:" + str(self.y))
+            self.x = random.randint(1, len(ClientChannel.dungeon[self.z][-1]) - 1)
+            print("x:" + str(self.x))
 
         # self.z = len(ClientChannel.dungeon)
         # print("z: " + str(self.z))
@@ -190,9 +198,8 @@ class ClientChannel(Channel):
         # keine Objekte senden
 
         items = [item.name for item in ClientChannel.items.values() if item.playerInventoryChar == self.char]
-        print("Items: " + str(items))
+        print(("Player \"{}\" requested his inventory: " + str(items)).format(self.player_name))
         self.Send({"action": "got_inventory", "inventory": items})
-        print("[Server] \"" + self.player_name + "\" requested his inventory.")
 
 
 class GameServer(Server):
@@ -254,7 +261,7 @@ if __name__ == '__main__':
                 d.append(list(line))
             ClientChannel.dungeon[z] = d
 
-        for x in range(20):
+        for x in range(100):
             Item()
         # print(ClientChannel.items)
         host, port = sys.argv[1].split(":")
