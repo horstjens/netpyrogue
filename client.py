@@ -19,7 +19,8 @@ class Client(ConnectionListener):
         print("Enter your nickname: ")
         player_name = stdin.readline().rstrip("\n")
         connection.Send({"action": "nickname", "player_name": player_name})
-        # launch our threaded input loop
+        self.inventory = {}
+        self.equipped_items= {}
         t = start_new_thread(self.InputLoop, ())
 
     def ClientGameLoop(self):
@@ -29,6 +30,9 @@ class Client(ConnectionListener):
     def InputLoop(self):
         # continually reads from stdin and sends whatever is typed to the server
         while True:
+            connection.Send({"action": "request_cords", "abc": "xyz"})
+            connection.Send({"action": "request_dungeon", "abc": "xyz"})
+            connection.Send({"action": "request_inventory", "abc": "xyz"})
             input_string = stdin.readline().rstrip("\n")
             print("Input: " + input_string)
             if input_string.startswith("!"):
@@ -47,12 +51,13 @@ class Client(ConnectionListener):
                 self.sendMove(Directions.East.value)
             elif input_string == "i":
                 print("Your inventory:")
-
+                for item in self.inventory:
+                    print("- {}".format(item))
+                print("You have these items equipped:")
+                for item in self.equipped_items:
+                    print("- {}".format(item))
             else:
                 print("[System] Unrecognized input: " + input_string)
-            connection.Send({"action": "request_cords", "abc": "xyz"})
-            connection.Send({"action": "request_dungeon", "abc": "xyz"})
-            connection.Send({"action": "request_inventory", "abc": "xyz"})
 
     # Network event/chat callbacks
 
@@ -60,7 +65,8 @@ class Client(ConnectionListener):
         cordinates = data['x_cordinates'], data['y_cordinates']
 
     def Network_got_inventory(self, data):
-        inventory = data['']
+        self.inventory = data['inventory']
+        self.equipped_items = data['equipped_items']
 
     def Network_got_dungeon(self, data):
         d = data['the_dungeon']

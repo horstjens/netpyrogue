@@ -11,10 +11,40 @@ global running
 running = True
 
 
+class Item:
+    id = 0
+
+    def __init__(self):
+        self.id = Item.id
+        Item.id += 1
+
+        ClientChannel.items[self.id] = self
+
+        self.name = random.choice(("Destruktive Zerstörungsenergie", "deaktivierte Netzwerkkarte", "GNU Lizenzbrief",
+                                   "Metasploit", "Rubber Ducky", "USB Rubber Ducky"))
+        self.playerInventoryChar = ''
+        self.playerEquippedChar = ''
+        self.char = "*"
+
+        self.z = random.randint(0, len(ClientChannel.dungeon))
+        self.y = random.randint(1, len(ClientChannel.dungeon[self.z - 1]))
+        self.x = random.randint(1, len(ClientChannel.dungeon[self.z - 1][-1]))
+
+        # self.z = len(ClientChannel.dungeon)
+        # print("z: " + str(self.z))
+        # self.y = len(ClientChannel.dungeon[self.z - 1])
+        # print("y: " + str(self.y))
+        # self.x = len(ClientChannel.dungeon[self.z - 1][-1])
+        # print("x: " + str(self.x))
+        print("produced " + self.name)
+
+
 class ClientChannel(Channel):
     """Game client representation"""
 
     free_x = 1
+
+    items = {}
 
     dungeon = []
 
@@ -48,11 +78,6 @@ class ClientChannel(Channel):
 
         self.inventory = {"Mysterious book": 1}
         self.hp = 100
-        self.equippedItems = {
-            "Pair of Jeans": 2,  # Auf zwei Hosenbeinen
-            "Small T-Shirt": 2,  # Beide T-Shirt Arme sind noch da
-            "Trainers":      2,  # Beide Schuhe sind noch da
-        }
 
         Channel.__init__(self, *args, **kwargs)
 
@@ -115,6 +140,9 @@ class ClientChannel(Channel):
             for char in line:
                 line2.append(char)
             self.the_dungeon.append(line2)
+        for i in ClientChannel.items.values():
+            if i.z == self.z:
+                self.the_dungeon[i.y][i.x] = i.char
         for p in self._server.players:
             self.the_dungeon[p.y][p.x] = p.char
 
@@ -128,7 +156,6 @@ class ClientChannel(Channel):
             if p.char != self.char:
                 if p.x == x and p.y == y and p.z == z:
                     return True
-
         return False
 
     def get_player_dungeon(self):
@@ -139,6 +166,10 @@ class ClientChannel(Channel):
 
     def send_server_message(self, message):
         self.Send({"action": "server_message", "message": message})
+
+    def Network_request_inventory(self, data):
+        # self.Send({"action": "got_inventory", "inventory": self.inventory, "equipped_items": self.equippedItems})
+        print(self.player_name + " requested his inventory")
 
 
 class GameServer(Server):
@@ -181,6 +212,7 @@ class GameServer(Server):
 
 
 if __name__ == '__main__':
+
     # get command line argument of server, port
     if len(sys.argv) != 2:
         print("[Server] Usage:", sys.argv[0], "host:port")
@@ -199,10 +231,11 @@ if __name__ == '__main__':
                 d.append(list(line))
             ClientChannel.dungeon[z] = d
 
+        for x in range(10):
+            Item()
+        # print(ClientChannel.items)
         host, port = sys.argv[1].split(":")
         s = GameServer(localaddr=(host, int(port)))
-
-        print(ClientChannel.dungeon)
 
         # dungeon = ClientChannel.dungeon
         # d = []
