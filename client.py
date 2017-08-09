@@ -45,15 +45,22 @@ class Client(ConnectionListener):
             elif input_string == "d":
                 print("Going east")
                 self.sendMove(Directions.East.value)
+            elif input_string == "i":
+                print("Your inventory:")
+
             else:
                 print("[System] Unrecognized input: " + input_string)
             connection.Send({"action": "request_cords", "abc": "xyz"})
             connection.Send({"action": "request_dungeon", "abc": "xyz"})
+            connection.Send({"action": "request_inventory", "abc": "xyz"})
 
     # Network event/chat callbacks
 
     def Network_got_cords(self, data):
         cordinates = data['x_cordinates'], data['y_cordinates']
+
+    def Network_got_inventory(self, data):
+        inventory = data['']
 
     def Network_got_dungeon(self, data):
         d = data['the_dungeon']

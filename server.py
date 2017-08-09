@@ -80,8 +80,11 @@ class ClientChannel(Channel):
         print("[Server] Player \"" + self.player_name + "\" moved to Direction \"" + str(data['direction']) + "\".")
 
         dx, dy = ClientChannel.movings[data['direction']]
-        if self.wallcheck(self.x + dx, self.y + dy, self.z):
+        if self.wall_check(self.x + dx, self.y + dy, self.z):
             self.Send({"action": "system_message", "message": "You bumped into the incredible wall."})
+            dx, dy = 0, 0
+        if self.player_check(self.x + dx, self.y + dy, self.z):
+            self.Send({"action": "system_message", "message": "You bumped into the other player, he hates ya now."})
             dx, dy = 0, 0
         # self.x += -dx
         # self.y += -dy
@@ -117,8 +120,16 @@ class ClientChannel(Channel):
 
         self.Send({"action": "got_dungeon", "the_dungeon": self.the_dungeon})
 
-    def wallcheck(self, x, y, z):
+    def wall_check(self, x, y, z):
         return ClientChannel.dungeon[z][y][x] == "#"
+
+    def player_check(self, x, y, z):
+        for p in self._server.players:
+            if p.char != self.char:
+                if p.x == x and p.y == y and p.z == z:
+                    return True
+
+        return False
 
     def get_player_dungeon(self):
         return ClientChannel.dungeon[self.z]
