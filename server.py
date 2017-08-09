@@ -1,3 +1,4 @@
+import os
 import random
 import sys
 from time import sleep
@@ -9,28 +10,13 @@ from lib.PodSixNet_Library.Server import Server
 global running
 running = True
 
+
 class ClientChannel(Channel):
     """Game client representation"""
 
     free_x = 1
 
-    dungeon = """
-####################################################
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-#..................................................#
-####################################################
-"""
+    dungeon = []
 
     movings = {
         1: (0, -1),
@@ -49,12 +35,24 @@ class ClientChannel(Channel):
         # If there are to many users which did not yet
         # enter a username (= anonymous) | Random: v v v v v v v
         self.player_name = "anonymous" + str(random.randrange(0, 101, 2))
+
         self.x = ClientChannel.free_x
         self.y = 2
+        self.z = 0
         ClientChannel.free_x += 1
-        self.char = str(self.x)
+
         # self.y = self.free_y
         # ClientChannel.free_y += 1
+
+        self.char = chr(self.x + 96)  # Ascii char code (97 - 172 = a - z)
+
+        self.inventory = {"Mysterious book": 1}
+        self.hp = 100
+        self.equippedItems = {
+            "Pair of Jeans": 2,  # Auf zwei Hosenbeinen
+            "Small T-Shirt": 2,  # Beide T-Shirt Arme sind noch da
+            "Trainers":      2,  # Beide Schuhe sind noch da
+        }
 
         Channel.__init__(self, *args, **kwargs)
 
@@ -82,7 +80,7 @@ class ClientChannel(Channel):
         print("[Server] Player \"" + self.player_name + "\" moved to Direction \"" + str(data['direction']) + "\".")
 
         dx, dy = ClientChannel.movings[data['direction']]
-        if self.wallcheck(self.x + dx, self.y + dy):
+        if self.wallcheck(self.x + dx, self.y + dy, self.z):
             self.Send({"action": "system_message", "message": "You bumped into the incredible wall."})
             dx, dy = 0, 0
         # self.x += -dx
@@ -91,11 +89,11 @@ class ClientChannel(Channel):
         self.y += dy
 
         print("[Server] Player \"" + self.player_name + "\" got new coordinates. dx: " + str(dx) + ", dy: " + str(dy),
-              "x: " + str(self.x) + ", y: " + str(self.y))
+              "x: " + str(self.x) + ", y: " + str(self.y) + ", z: " + str(self.z))
 
     def Network_request_cords(self, data):
         print("[Server] Player \"" + self.player_name + "\" requested coordinates.")
-        self.Send({"action": "got_cords",
+        self.Send({"action":       "got_cords",
                    "x_cordinates": [p.x for p in self._server.players if p.player_name == self.player_name],
                    "y_cordinates": [p.y for p in self._server.players if p.player_name == self.player_name],
                    })
@@ -104,24 +102,32 @@ class ClientChannel(Channel):
         print("[Server] Player \"" + self.player_name + "\" requested the dungeon.")
         self.the_dungeon = []
 
-        #for line in self.dungeon:
+        # for line in self.dungeon:
         #    for char in line:
         #        print(char, end="")
         #    print()
 
-        for line in self.dungeon:
+        for line in self.get_player_dungeon():
             line2 = []
             for char in line:
-               line2.append(char)
+                line2.append(char)
             self.the_dungeon.append(line2)
         for p in self._server.players:
             self.the_dungeon[p.y][p.x] = p.char
 
-        self._server.SendToAll({"action": "got_dungeon", "the_dungeon": self.the_dungeon})
+        self.Send({"action": "got_dungeon", "the_dungeon": self.the_dungeon})
 
-    def wallcheck(self, x, y, z=0):
-        target = ClientChannel.dungeon[y][x]
-        return target == "#"
+    def wallcheck(self, x, y, z):
+        return ClientChannel.dungeon[z][y][x] == "#"
+
+    def get_player_dungeon(self):
+        return ClientChannel.dungeon[self.z]
+
+    def send_system_message(self, message):
+        self.Send({"action": "system_message", "message": message})
+
+    def send_server_message(self, message):
+        self.Send({"action": "server_message", "message": message})
 
 
 class GameServer(Server):
@@ -169,15 +175,30 @@ if __name__ == '__main__':
         print("[Server] Usage:", sys.argv[0], "host:port")
         print("[Server] e.g.", sys.argv[0], "localhost:31425")
     else:
+
+        print("Reading dungeons...")
+        for filename in os.listdir("data/maps"):
+            print("Found dungeon: " + filename)
+            dungeon_content = open("data/maps/" + filename, "r").read()
+            ClientChannel.dungeon.append(dungeon_content)
+
+        for z, dungeon in enumerate(ClientChannel.dungeon):
+            d = []
+            for line in dungeon.splitlines():
+                d.append(list(line))
+            ClientChannel.dungeon[z] = d
+
         host, port = sys.argv[1].split(":")
         s = GameServer(localaddr=(host, int(port)))
 
-        dungeon = ClientChannel.dungeon
-        d = []
+        print(ClientChannel.dungeon)
 
-        for line in dungeon.splitlines():
-            d.append(list(line))
+        # dungeon = ClientChannel.dungeon
+        # d = []
 
-        ClientChannel.dungeon = d
+        # for line in dungeon.splitlines():
+        #    d.append(list(line))
+
+        # ClientChannel.dungeon = d
 
         s.Launch()
