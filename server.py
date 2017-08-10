@@ -20,15 +20,22 @@ class Item:
 
         ClientChannel.items[self.id] = self
 
+        # Type?
+
         self.name = random.choice(("Destruktive Zerstörungsenergie", "deaktivierte Netzwerkkarte", "GNU Lizenzbrief",
                                    "Metasploit", "Rubber Ducky", "USB Rubber Ducky"))
         self.playerInventoryChar = ''
-        self.playerEquippedChar = ''
+        self.isEquipped = False
         self.char = "*"
 
-        self.z = random.randint(0, len(ClientChannel.dungeon))
-        self.y = random.randint(1, len(ClientChannel.dungeon[self.z - 1]))
-        self.x = random.randint(1, len(ClientChannel.dungeon[self.z - 1][-1]))
+        self.z = 0
+        self.x = 0
+        self.y = 0
+
+        while ClientChannel.wall_check(0, self.x, self.y, self.z):
+            self.z = random.randint(0, len(ClientChannel.dungeon) - 1)
+            self.y = random.randint(1, len(ClientChannel.dungeon[self.z]) - 1)
+            self.x = random.randint(1, len(ClientChannel.dungeon[self.z][-1]) - 1)
 
         # self.z = len(ClientChannel.dungeon)
         # print("z: " + str(self.z))
@@ -36,7 +43,20 @@ class Item:
         # print("y: " + str(self.y))
         # self.x = len(ClientChannel.dungeon[self.z - 1][-1])
         # print("x: " + str(self.x))
-        print("produced " + self.name)
+        print("[Server] Produced \"" + self.name + "\" at z:" + str(self.z) + ", y:" + str(self.y) + ", x:" + str(
+                self.x) + ".")
+
+    def pickup(self, playerchar):
+        self.playerInventoryChar = playerchar
+        self.x = None
+        self.y = None
+        self.z = None
+
+    def drop(self, x, y, z):
+        self.playerInventoryChar = ''
+        self.x = x
+        self.y = y
+        self.z = z
 
 
 class ClientChannel(Channel):
@@ -88,8 +108,10 @@ class ClientChannel(Channel):
     # Network specific callbacks
 
     def Network_chat(self, data):
-        print("[Server] Player \"" + self.player_name + "\" sent chat message \"" + data['chat'] + "\".")
-        self._server.SendToAll({"action": "chat", "chat": data['chat'], "who": self.player_name})
+        message = data['chat']
+        message = message[1:]
+        print("[Server] Player \"" + self.player_name + "\" sent chat message \"" + message + "\".")
+        self._server.SendToAll({"action": "chat", "chat": message, "who": self.player_name})
 
     # Will be called when the player enters his nickname ==> PLAYERJOIN
     def Network_nickname(self, data):
@@ -111,6 +133,12 @@ class ClientChannel(Channel):
         if self.player_check(self.x + dx, self.y + dy, self.z):
             self.Send({"action": "system_message", "message": "You bumped into the other player, he hates ya now."})
             dx, dy = 0, 0
+        if self.get_items_at(self.x + dx, self.y + dy, self.z):
+            items = self.get_items_at(self.x + dx, self.y + dy, self.z)
+            for item in items:
+                item.pickup(self.char)
+                self.Send({"action": "system_message", "message": "You found a: {}.".format(item.name)})
+
         # self.x += -dx
         # self.y += -dy
         self.x += dx
@@ -128,7 +156,7 @@ class ClientChannel(Channel):
 
     def Network_request_dungeon(self, data):
         print("[Server] Player \"" + self.player_name + "\" requested the dungeon.")
-        self.the_dungeon = []
+        the_dungeon = []
 
         # for line in self.dungeon:
         #    for char in line:
@@ -139,22 +167,33 @@ class ClientChannel(Channel):
             line2 = []
             for char in line:
                 line2.append(char)
-            self.the_dungeon.append(line2)
-        for i in ClientChannel.items.values():
-            if i.z == self.z:
-                self.the_dungeon[i.y][i.x] = i.char
-        for p in self._server.players:
-            self.the_dungeon[p.y][p.x] = p.char
+            the_dungeon.append(line2)
+        for item in ClientChannel.items.values():
+            if item.z == self.z and item.playerInventoryChar == '':
+                the_dungeon[item.y][item.x] = item.char
+        for player in self._server.players:
+            the_dungeon[player.y][player.x] = player.char
 
-        self.Send({"action": "got_dungeon", "the_dungeon": self.the_dungeon})
+        self.Send({"action": "got_dungeon", "the_dungeon": the_dungeon})
 
     def wall_check(self, x, y, z):
         return ClientChannel.dungeon[z][y][x] == "#"
 
+    def get_items_at(self, x, y, z):
+        retItems = []
+        for item in ClientChannel.items.values():
+            if item.playerInventoryChar != '':
+                continue
+            if item.x == x and item.y == y and item.z == z:
+                retItems.append(item)
+        if len(retItems) == 0:
+            return False
+        return retItems
+
     def player_check(self, x, y, z):
-        for p in self._server.players:
-            if p.char != self.char:
-                if p.x == x and p.y == y and p.z == z:
+        for player in self._server.players:
+            if player.char != self.char:
+                if player.x == x and player.y == y and player.z == z:
                     return True
         return False
 
@@ -168,8 +207,12 @@ class ClientChannel(Channel):
         self.Send({"action": "server_message", "message": message})
 
     def Network_request_inventory(self, data):
-        # self.Send({"action": "got_inventory", "inventory": self.inventory, "equipped_items": self.equippedItems})
-        print(self.player_name + " requested his inventory")
+        # items = [item for item in ClientChannel.items.values() if item.playerInventoryChar == self.char] # Kann
+        # keine Objekte senden
+
+        items = [(item.id, item.name) for item in ClientChannel.items.values() if item.playerInventoryChar == self.char]
+        print(("Player \"{}\" requested his inventory: " + str(items)).format(self.player_name))
+        self.Send({"action": "got_inventory", "inventory": items})
 
 
 class GameServer(Server):
@@ -231,7 +274,7 @@ if __name__ == '__main__':
                 d.append(list(line))
             ClientChannel.dungeon[z] = d
 
-        for x in range(10):
+        for x in range(100):
             Item()
         # print(ClientChannel.items)
         host, port = sys.argv[1].split(":")

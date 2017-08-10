@@ -20,7 +20,7 @@ class Client(ConnectionListener):
         player_name = stdin.readline().rstrip("\n")
         connection.Send({"action": "nickname", "player_name": player_name})
         self.inventory = {}
-        self.equipped_items= {}
+        self.equipped_items = {}
         t = start_new_thread(self.InputLoop, ())
 
     def ClientGameLoop(self):
@@ -37,25 +37,29 @@ class Client(ConnectionListener):
             print("Input: " + input_string)
             if input_string.startswith("!"):
                 connection.Send({"action": "chat", "chat": input_string})
-            elif input_string == "w":
+            elif input_string.startswith("w"):
                 print("Going north")
-                self.sendMove(Directions.North.value)
-            elif input_string == "a":
+                for i in range(input_string.count("w", 0, len(input_string))):
+                    self.sendMove(Directions.North.value)
+            elif input_string.startswith("a"):
                 print("Going west")
-                self.sendMove(Directions.West.value)
-            elif input_string == "s":
+                for i in range(input_string.count("a", 0, len(input_string))):
+                    self.sendMove(Directions.West.value)
+            elif input_string.startswith("s"):
                 print("Going south")
-                self.sendMove(Directions.South.value)
-            elif input_string == "d":
+                for i in range(input_string.count("s", 0, len(input_string))):
+                    self.sendMove(Directions.South.value)
+            elif input_string .startswith("d"):
                 print("Going east")
-                self.sendMove(Directions.East.value)
+                for i in range(input_string.count("d", 0, len(input_string))):
+                    self.sendMove(Directions.East.value)
             elif input_string == "i":
                 print("Your inventory:")
                 for item in self.inventory:
-                    print("- {}".format(item))
-                print("You have these items equipped:")
-                for item in self.equipped_items:
-                    print("- {}".format(item))
+                    print("- {}: {}".format(item[0], item[1]))
+                # print("You have these items equipped:")
+                # for item in self.equipped_items:
+                #    print("- {}".format(item))
             else:
                 print("[System] Unrecognized input: " + input_string)
 
@@ -66,7 +70,6 @@ class Client(ConnectionListener):
 
     def Network_got_inventory(self, data):
         self.inventory = data['inventory']
-        self.equipped_items = data['equipped_items']
 
     def Network_got_dungeon(self, data):
         d = data['the_dungeon']
@@ -104,6 +107,7 @@ class Client(ConnectionListener):
 
     def Network_disconnected(self, data):
         print('[System] Server disconnected')
+        global running
         running = False
 
     def sendMove(self, direction):
