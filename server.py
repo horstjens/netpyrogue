@@ -44,7 +44,19 @@ class Item:
         # self.x = len(ClientChannel.dungeon[self.z - 1][-1])
         # print("x: " + str(self.x))
         print("[Server] Produced \"" + self.name + "\" at z:" + str(self.z) + ", y:" + str(self.y) + ", x:" + str(
-            self.x) + ".")
+                self.x) + ".")
+
+    def pickup(self, playerchar):
+        self.playerInventoryChar = playerchar
+        self.x = None
+        self.y = None
+        self.z = None
+
+    def drop(self, x, y, z):
+        self.playerInventoryChar = ''
+        self.x = x
+        self.y = y
+        self.z = z
 
 
 class ClientChannel(Channel):
@@ -121,10 +133,11 @@ class ClientChannel(Channel):
         if self.player_check(self.x + dx, self.y + dy, self.z):
             self.Send({"action": "system_message", "message": "You bumped into the other player, he hates ya now."})
             dx, dy = 0, 0
-        if self.item_check(self.x + dx, self.y + dy, self.z):
-            item = self.get_item_at(self.x + dx, self.y + dy, self.z)
-            item.playerInventoryChar = self.char
-            self.Send({"action": "system_message", "message": "You found a: {}.".format(item.name)})
+        if self.get_items_at(self.x + dx, self.y + dy, self.z):
+            items = self.get_items_at(self.x + dx, self.y + dy, self.z)
+            for item in items:
+                item.pickup(self.char)
+                self.Send({"action": "system_message", "message": "You found a: {}.".format(item.name)})
 
         # self.x += -dx
         # self.y += -dy
@@ -166,16 +179,16 @@ class ClientChannel(Channel):
     def wall_check(self, x, y, z):
         return ClientChannel.dungeon[z][y][x] == "#"
 
-    def item_check(self, x, y, z):
+    def get_items_at(self, x, y, z):
+        retItems = []
         for item in ClientChannel.items.values():
-            if item.x == x and item.y == y and item.z == z and item.playerInventoryChar == '':
-                return True
-        return False
-
-    def get_item_at(self, x, y, z):
-        for item in ClientChannel.items.values():
+            if item.playerInventoryChar != '':
+                continue
             if item.x == x and item.y == y and item.z == z:
-                return item
+                retItems.append(item)
+        if len(retItems) == 0:
+            return False
+        return retItems
 
     def player_check(self, x, y, z):
         for player in self._server.players:
@@ -197,7 +210,7 @@ class ClientChannel(Channel):
         # items = [item for item in ClientChannel.items.values() if item.playerInventoryChar == self.char] # Kann
         # keine Objekte senden
 
-        items = [item.name for item in ClientChannel.items.values() if item.playerInventoryChar == self.char]
+        items = [(item.id, item.name) for item in ClientChannel.items.values() if item.playerInventoryChar == self.char]
         print(("Player \"{}\" requested his inventory: " + str(items)).format(self.player_name))
         self.Send({"action": "got_inventory", "inventory": items})
 

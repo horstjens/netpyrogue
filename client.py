@@ -56,7 +56,7 @@ class Client(ConnectionListener):
             elif input_string == "i":
                 print("Your inventory:")
                 for item in self.inventory:
-                    print("- {}".format(item))
+                    print("- {}: {}".format(item[0], item[1]))
                 # print("You have these items equipped:")
                 # for item in self.equipped_items:
                 #    print("- {}".format(item))
