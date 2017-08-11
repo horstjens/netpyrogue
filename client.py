@@ -120,6 +120,7 @@ class Client(ConnectionListener):
 
 
 if __name__ == '__main__':
+    print("NetPyRouge client version: 0.1")
     if len(sys.argv) != 2:
         print("Usage:", sys.argv[0], "host:port")
         print("e.g.", sys.argv[0], "localhost:31425")
