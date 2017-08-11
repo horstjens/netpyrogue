@@ -197,7 +197,7 @@ class ClientChannel(Channel):
         for player in self._server.players:
             the_dungeon[player.y][player.x] = player.char
 
-        #self.Send({"action": "got_dungeon", "the_dungeon": the_dungeon})
+        # self.Send({"action": "got_dungeon", "the_dungeon": the_dungeon})
         self._server.send_to_all({"action": "got_dungeon", "the_dungeon": the_dungeon})
 
     def wall_check(self, x, y, z):
@@ -228,9 +228,12 @@ class ClientChannel(Channel):
         self.Send({"action": "got_inventory", "inventory": items})
 
     def Network_drop(self, data):
+        print("Player " + self.player_name + " tried to drop item " + str(data['item']))
         items = [item.id for item in ClientChannel.items.values() if item.playerInventoryChar == self.char]
+        print("Player " + self.player_name + " inventory: " + str(items))
         item_id = data['item']
-        if id not in items:
+        if item_id not in items:
+            print(str(item_id) + "not in " + str(items))
             self.Send({"action": "system_message", "message": "You don't own item nr. " + str(item_id) + "! mount "
                                                                                                          "/dev/brain!"})
             return
