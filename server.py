@@ -188,8 +188,9 @@ class ClientChannel(Channel):
             elif ClientChannel.dungeon[self.z][self.y + dy][self.x + dx] == "\\":
                 self.Send({"action": "system_message", "message": "You walked the stair down"})
                 self.z -= 1
+            self.update_dungeon_for_players()
 
-        #print("Online players: " + str(len(self._server.players)))
+        # print("Online players: " + str(len(self._server.players)))
 
         # self.x += -dx
         # self.y += -dy
@@ -228,8 +229,24 @@ class ClientChannel(Channel):
             if player.z == self.z:
                 the_dungeon[player.y][player.x] = player.char
 
-        self.Send({"action": "got_dungeon", "the_dungeon": the_dungeon})
-        # self._server.send_to_all({"action": "got_dungeon", "the_dungeon": the_dungeon})
+        self.send_to_same_dungeon({"action": "got_dungeon", "the_dungeon": the_dungeon})
+
+    def update_dungeon_for_players(self):
+        print("[Server] Updating dungeons for players.")
+        for connected_player in self._server.players:
+            the_dungeon = []
+            for line in connected_player.get_player_dungeon():
+                line2 = []
+                for char in line:
+                    line2.append(char)
+                the_dungeon.append(line2)
+            for item in ClientChannel.items.values():
+                if item.z == connected_player.z and item.playerInventoryChar == '':
+                    the_dungeon[item.y][item.x] = item.char
+            for player in connected_player._server.players:
+                if player.z == connected_player.z:
+                    the_dungeon[player.y][player.x] = player.char
+            connected_player.Send({"action": "got_dungeon", "the_dungeon": the_dungeon})
 
     def wall_check(self, x, y, z):
         return ClientChannel.dungeon[z][y][x] == "#"
@@ -242,7 +259,7 @@ class ClientChannel(Channel):
         return False
 
     def staircase_check(self, x, y, z):
-        return ClientChannel.dungeon[z][y][x] == "/" or ClientChannel.dungeon[z][y][x] ==  "\\"
+        return ClientChannel.dungeon[z][y][x] == "/" or ClientChannel.dungeon[z][y][x] == "\\"
 
     def get_player_dungeon(self):
         return ClientChannel.dungeon[self.z]
@@ -272,6 +289,9 @@ class ClientChannel(Channel):
                                                                                                          "/dev/brain!"})
             return
         ClientChannel.items[item_id].drop(self.x, self.y, self.z)
+
+    def send_to_same_dungeon(self, data):
+        [player.Send(data) for player in self._server.players if player.z == self.z]
 
 
 class GameServer(Server):
