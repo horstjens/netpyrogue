@@ -49,7 +49,7 @@ class Client(ConnectionListener):
                 print("Going south")
                 for i in range(input_string.count("s", 0, len(input_string))):
                     self.sendMove(Directions.South.value)
-            elif input_string .startswith("d"):
+            elif input_string.startswith("d"):
                 print("Going east")
                 for i in range(input_string.count("d", 0, len(input_string))):
                     self.sendMove(Directions.East.value)
@@ -57,9 +57,13 @@ class Client(ConnectionListener):
                 print("Your inventory:")
                 for item in self.inventory:
                     print("- {}: {}".format(item[0], item[1]))
-                # print("You have these items equipped:")
-                # for item in self.equipped_items:
-                #    print("- {}".format(item))
+            elif input_string.split(" ")[0] == "drop":
+                try:
+                    id = int(input_string.split(" ")[1])
+                except Exception:
+                    print("mount /dev/brain")
+                    return
+                connection.Send({"action": "drop", "item": id})
             else:
                 print("[System] Unrecognized input: " + input_string)
 

@@ -1,7 +1,7 @@
 import os
 import random
 import sys
-from time import sleep
+import time
 from weakref import WeakKeyDictionary
 
 from lib.PodSixNet_Library.Channel import Channel
@@ -59,6 +59,18 @@ class Item:
         self.z = z
 
 
+def get_items_at(x, y, z):
+    retItems = []
+    for item in ClientChannel.items.values():
+        if item.playerInventoryChar != '':
+            continue
+        if item.x == x and item.y == y and item.z == z:
+            retItems.append(item)
+    if len(retItems) == 0:
+        return False
+    return retItems
+
+
 class ClientChannel(Channel):
     """Game client representation"""
 
@@ -86,10 +98,13 @@ class ClientChannel(Channel):
         # enter a username (= anonymous) | Random: v v v v v v v
         self.player_name = "anonymous" + str(random.randrange(0, 101, 2))
 
+        self.id = ClientChannel.free_x
         self.x = ClientChannel.free_x
         self.y = 2
         self.z = 0
         ClientChannel.free_x += 1
+
+        # self._server.time_last_move[self.id] = time.time()
 
         # self.y = self.free_y
         # ClientChannel.free_y += 1
@@ -100,10 +115,11 @@ class ClientChannel(Channel):
         self.hp = 100
 
         Channel.__init__(self, *args, **kwargs)
+        self._server.time_last_move[self.id] = time.time()
 
     def Close(self):
         print("[Server] Player \"" + self.player_name + "\" disconnected.")
-        self._server.DelPlayer(self)
+        self._server.delete_player(self)
 
     # Network specific callbacks
 
@@ -111,7 +127,7 @@ class ClientChannel(Channel):
         message = data['chat']
         message = message[1:]
         print("[Server] Player \"" + self.player_name + "\" sent chat message \"" + message + "\".")
-        self._server.SendToAll({"action": "chat", "chat": message, "who": self.player_name})
+        self._server.send_to_all({"action": "chat", "chat": message, "who": self.player_name})
 
     # Will be called when the player enters his nickname ==> PLAYERJOIN
     def Network_nickname(self, data):
@@ -121,9 +137,13 @@ class ClientChannel(Channel):
 
     def Network_playerjoin(self):
         print("[Server] Player \"" + self.player_name + "\" joined the game.")
-        self._server.SendToAll({"action": "playerjoin", "player_name": self.player_name})
+        self._server.send_to_all({"action": "playerjoin", "player_name": self.player_name})
 
     def Network_playermove(self, data):
+        if not self._server.can_move(self.id):
+            self.Send({"action": "system_message", "message": "You can not move yet"})
+            return
+
         print("[Server] Player \"" + self.player_name + "\" moved to Direction \"" + str(data['direction']) + "\".")
 
         dx, dy = ClientChannel.movings[data['direction']]
@@ -133,11 +153,13 @@ class ClientChannel(Channel):
         if self.player_check(self.x + dx, self.y + dy, self.z):
             self.Send({"action": "system_message", "message": "You bumped into the other player, he hates ya now."})
             dx, dy = 0, 0
-        if self.get_items_at(self.x + dx, self.y + dy, self.z):
-            items = self.get_items_at(self.x + dx, self.y + dy, self.z)
+        if get_items_at(self.x + dx, self.y + dy, self.z):
+            items = get_items_at(self.x + dx, self.y + dy, self.z)
             for item in items:
                 item.pickup(self.char)
                 self.Send({"action": "system_message", "message": "You found a: {}.".format(item.name)})
+
+        print("Spieler: " + str(len(self._server.players)))
 
         # self.x += -dx
         # self.y += -dy
@@ -146,6 +168,7 @@ class ClientChannel(Channel):
 
         print("[Server] Player \"" + self.player_name + "\" got new coordinates. dx: " + str(dx) + ", dy: " + str(dy),
               "x: " + str(self.x) + ", y: " + str(self.y) + ", z: " + str(self.z))
+        self._server.moved(self.id)
 
     def Network_request_cords(self, data):
         print("[Server] Player \"" + self.player_name + "\" requested coordinates.")
@@ -179,17 +202,6 @@ class ClientChannel(Channel):
     def wall_check(self, x, y, z):
         return ClientChannel.dungeon[z][y][x] == "#"
 
-    def get_items_at(self, x, y, z):
-        retItems = []
-        for item in ClientChannel.items.values():
-            if item.playerInventoryChar != '':
-                continue
-            if item.x == x and item.y == y and item.z == z:
-                retItems.append(item)
-        if len(retItems) == 0:
-            return False
-        return retItems
-
     def player_check(self, x, y, z):
         for player in self._server.players:
             if player.char != self.char:
@@ -214,41 +226,60 @@ class ClientChannel(Channel):
         print(("Player \"{}\" requested his inventory: " + str(items)).format(self.player_name))
         self.Send({"action": "got_inventory", "inventory": items})
 
+    def Network_drop(self, data):
+        items = [item.id for item in ClientChannel.items.values() if item.playerInventoryChar == self.char]
+        item_id = data['item']
+        if id not in items:
+            self.Send({"action": "system_message", "message": "You don't own item nr. " + str(item_id) + "! mount "
+                                                                                                         "/dev/brain!"})
+            return
+        ClientChannel.items[item_id].drop(self.x, self.y, self.z)
+
 
 class GameServer(Server):
     channelClass = ClientChannel
 
     def __init__(self, *args, **kwargs):
         Server.__init__(self, *args, **kwargs)
+        self.time_last_move = {}
         self.players = WeakKeyDictionary()
         print("[Server] Server launched")
 
     def Connected(self, channel, addr):
-        self.AddPlayer(channel)
+        self.add_player(channel)
 
-    def AddPlayer(self, player):
+    def add_player(self, player):
         print("[Server] New Player" + str(player.addr))
         self.players[player] = True
         # self.publish_players()
+
         print("[Server] players", [p for p in self.players])
 
-    def DelPlayer(self, player):
+    def moved(self, id):
+        self.time_last_move[id] = time.time()
+
+    def can_move(self, id):
+        if len(self.players) == 1:
+            return True
+        return time.time() - self.time_last_move[id] > 5
+
+    def delete_player(self, player):
         print("[Server] Deleting Player" + str(player.addr))
         del self.players[player]
         self.publish_players()
 
     def publish_players(self):
-        self.SendToAll({"action": "players", "players": [p.player_name for p in self.players]})
+        self.send_to_all({"action": "players", "players": [p.player_name for p in self.players]})
 
-    def SendToAll(self, data):
+    def send_to_all(self, data):
         [player.Send(data) for player in self.players]
 
-    def Launch(self):
+    def launch_server(self):
         global running
         while running:
             self.Pump()
             try:
-                sleep(0.0001)
+                time.sleep(0.0001)
             except KeyboardInterrupt:
                 print("Caught [SIGTERM] (KeyboardInterrupt)\nExiting...")
                 running = False
@@ -288,4 +319,4 @@ if __name__ == '__main__':
 
         # ClientChannel.dungeon = d
 
-        s.Launch()
+        s.launch_server()
