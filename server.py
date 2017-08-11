@@ -128,7 +128,6 @@ class ClientChannel(Channel):
         print("[Server] Player \"" + self.player_name + "\" (\"" + self.char + "\") disconnected.")
         self._server.delete_player(self)
 
-    # Network specific callbacks
 
     def Network_chat(self, data):
         message = data['chat']
@@ -201,11 +200,6 @@ class ClientChannel(Channel):
                 self.Send({"action": "system_message", "message": "You walked the stair down"})
                 self.z -= 1
             self.update_dungeon_for_players()
-
-        # print("Online players: " + str(len(self._server.players)))
-
-        # self.x += -dx
-        # self.y += -dy
         self.x += dx
         self.y += dy
 
@@ -224,16 +218,11 @@ class ClientChannel(Channel):
         print("[Server] Player \"" + self.player_name + "\" requested the dungeon.")
         the_dungeon = []
 
-        # for line in self.dungeon:
-        #    for char in line:
-        #        print(char, end="")
-        #    print()
-
-        for line in self.get_player_dungeon():
-            line2 = []
-            for char in line:
-                line2.append(char)
-            the_dungeon.append(line2)
+        for dungeon_line in self.get_player_dungeon():
+            dungeon_line2 = []
+            for char in dungeon_line:
+                dungeon_line2.append(char)
+            the_dungeon.append(dungeon_line2)
         for item in ClientChannel.items.values():
             if item.z == self.z and item.playerInventoryChar == '':
                 the_dungeon[item.y][item.x] = item.char
@@ -277,9 +266,6 @@ class ClientChannel(Channel):
         self.Send({"action": "server_message", "message": message})
 
     def Network_request_inventory(self, data):
-        # items = [item for item in ClientChannel.items.values() if item.playerInventoryChar == self.char] # Can't
-        # send objects
-
         items = [(item.id, item.name) for item in ClientChannel.items.values() if item.playerInventoryChar == self.char]
         print(("[Server] Player \"{}\" requested his inventory: " + str(items)).format(self.player_name))
         self.Send({"action": "got_inventory", "inventory": items})
@@ -367,7 +353,7 @@ if __name__ == '__main__':
             for line in dungeon.splitlines():
                 d.append(list(line))
             ClientChannel.dungeon[z] = d
-        item_count = 100
+        item_count = 20
         print("[Server] Reassembled dungeons, generating " + str(item_count) + " items...")
         for x in range(item_count):
             Item()
@@ -375,13 +361,5 @@ if __name__ == '__main__':
         print("[Server] Generated items, starting the game server...")
         host, port = sys.argv[1].split(":")
         s = GameServer(localaddr=(host, int(port)))
-
-        # dungeon = ClientChannel.dungeon
-        # d = []
-
-        # for line in dungeon.splitlines():
-        #    d.append(list(line))
-
-        # ClientChannel.dungeon = d
 
         s.launch_server()
