@@ -181,11 +181,12 @@ class ClientChannel(Channel):
                 item.pickup(self.char)
                 self.Send({"action": "system_message", "message": "You found a: {}.".format(item.name)})
         elif self.staircase_check(self.x + dx, self.y + dy, self.z):
-            print("Player walks to staircase")
             if ClientChannel.dungeon[self.z][self.y + dy][self.x + dx] == "/":
+                print("Player \"" + self.player_name + "\" walked a staircase up, is now at z: " + str(self.z) + ".")
                 self.Send({"action": "system_message", "message": "You walked the stair up"})
                 self.z += 1
             elif ClientChannel.dungeon[self.z][self.y + dy][self.x + dx] == "\\":
+                print("Player \"" + self.player_name + "\" walked a staircase down, is now at z: " + str(self.z) + ".")
                 self.Send({"action": "system_message", "message": "You walked the stair down"})
                 self.z -= 1
             self.update_dungeon_for_players()
@@ -204,8 +205,8 @@ class ClientChannel(Channel):
     def Network_request_cords(self, data):
         print("[Server] Player \"" + self.player_name + "\" requested coordinates.")
         self.Send({"action":       "got_cords",
-                   "x_cordinates": [p.x for p in self._server.players if p.player_name == self.player_name],
-                   "y_cordinates": [p.y for p in self._server.players if p.player_name == self.player_name],
+                   "x_coordinates": [p.x for p in self._server.players if p.player_name == self.player_name],
+                   "y_coordinates": [p.y for p in self._server.players if p.player_name == self.player_name],
                    })
 
     def Network_request_dungeon(self, data):

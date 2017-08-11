@@ -71,7 +71,7 @@ class Client(ConnectionListener):
     # Network event/chat callbacks
 
     def Network_got_cords(self, data):
-        cordinates = data['x_cordinates'], data['y_cordinates']
+        cordinates = data['x_coordinates'], data["y_coordinates"]
 
     def Network_got_inventory(self, data):
         self.inventory = data['inventory']
