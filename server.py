@@ -184,7 +184,13 @@ class ClientChannel(Channel):
             items = get_items_at(self.x + dx, self.y + dy, self.z)
             for item in items:
                 item.pickup(self.char)
-                self.Send({"action": "system_message", "message": "You found a: {}.".format(item.name)})
+                chars = ["a", "e", "i", "o", "u"]
+                for char in chars:
+                    if item.name.lower().startswith(char):
+                        self.Send({"action": "system_message", "message": "You found an: {}.".format(item.name)})
+                        break
+                else:
+                    self.Send({"action": "system_message", "message": "You found a: {}.".format(item.name)})
         elif staircase_check(self.x + dx, self.y + dy, self.z):
             if ClientChannel.dungeon[self.z][self.y + dy][self.x + dx] == "/":
                 print("Player \"" + self.player_name + "\" walked a staircase up, is now at z: " + str(self.z) + ".")
