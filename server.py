@@ -8,9 +8,6 @@ from Directions import Directions
 from lib.PodSixNet_Library.Channel import Channel
 from lib.PodSixNet_Library.Server import Server
 
-global running
-running = True
-
 
 class Item:
     id = 0
@@ -37,8 +34,8 @@ class Item:
             self.z = random.randint(0, len(ClientChannel.dungeon) - 1)
             self.y = random.randint(1, len(ClientChannel.dungeon[self.z]) - 1)
             self.x = random.randint(1, len(ClientChannel.dungeon[self.z][-1]) - 1)
-            if not ClientChannel.wall_check(0, self.x, self.y, self.z) \
-                    and not ClientChannel.staircase_check(0, self.x, self.y, self.z):
+            if not wall_check(self.x, self.y, self.z) \
+                    and not staircase_check(self.x, self.y, self.z):
                 break
         else:
             print("Couldn't find appropriate place for " + self.name + ", is the dungeon too small?")
@@ -69,6 +66,14 @@ def get_items_at(x, y, z):
     if len(return_items) == 0:
         return False
     return return_items
+
+
+def wall_check(x, y, z):
+    return ClientChannel.dungeon[z][y][x] == "#"
+
+
+def staircase_check(x, y, z):
+    return ClientChannel.dungeon[z][y][x] == "/" or ClientChannel.dungeon[z][y][x] == "\\"
 
 
 class ClientChannel(Channel):
@@ -169,7 +174,7 @@ class ClientChannel(Channel):
                 data['direction']).name + "\".")
 
         dx, dy = ClientChannel.player_movements[data['direction']]
-        if self.wall_check(self.x + dx, self.y + dy, self.z):
+        if wall_check(self.x + dx, self.y + dy, self.z):
             self.Send({"action": "system_message", "message": "You bumped into the incredible wall."})
             dx, dy = 0, 0
         elif self.player_check(self.x + dx, self.y + dy, self.z):
@@ -180,7 +185,7 @@ class ClientChannel(Channel):
             for item in items:
                 item.pickup(self.char)
                 self.Send({"action": "system_message", "message": "You found a: {}.".format(item.name)})
-        elif self.staircase_check(self.x + dx, self.y + dy, self.z):
+        elif staircase_check(self.x + dx, self.y + dy, self.z):
             if ClientChannel.dungeon[self.z][self.y + dy][self.x + dx] == "/":
                 print("Player \"" + self.player_name + "\" walked a staircase up, is now at z: " + str(self.z) + ".")
                 self.Send({"action": "system_message", "message": "You walked the stair up"})
@@ -204,7 +209,7 @@ class ClientChannel(Channel):
 
     def Network_request_cords(self, data):
         print("[Server] Player \"" + self.player_name + "\" requested coordinates.")
-        self.Send({"action":       "got_cords",
+        self.Send({"action":        "got_cords",
                    "x_coordinates": [p.x for p in self._server.players if p.player_name == self.player_name],
                    "y_coordinates": [p.y for p in self._server.players if p.player_name == self.player_name],
                    })
@@ -244,13 +249,10 @@ class ClientChannel(Channel):
             for item in ClientChannel.items.values():
                 if item.z == connected_player.z and item.playerInventoryChar == '':
                     the_dungeon[item.y][item.x] = item.char
-            for player in connected_player._server.players:
+            for player in self._server.players:
                 if player.z == connected_player.z:
                     the_dungeon[player.y][player.x] = player.char
             connected_player.Send({"action": "got_dungeon", "the_dungeon": the_dungeon})
-
-    def wall_check(self, x, y, z):
-        return ClientChannel.dungeon[z][y][x] == "#"
 
     def player_check(self, x, y, z):
         for player in self._server.players:
@@ -258,9 +260,6 @@ class ClientChannel(Channel):
                 if player.x == x and player.y == y and player.z == z:
                     return True
         return False
-
-    def staircase_check(self, x, y, z):
-        return ClientChannel.dungeon[z][y][x] == "/" or ClientChannel.dungeon[z][y][x] == "\\"
 
     def get_player_dungeon(self):
         return ClientChannel.dungeon[self.z]
@@ -314,13 +313,13 @@ class GameServer(Server):
 
         print("[Server] players", [p for p in self.players])
 
-    def player_moved(self, id):
-        self.time_last_move[id] = time.time()
+    def player_moved(self, player_id):
+        self.time_last_move[player_id] = time.time()
 
-    def can_move(self, id):
+    def can_move(self, player_id):
         if len(self.players) == 1:
             return True
-        return time.time() - self.time_last_move[id] > 0
+        return time.time() - self.time_last_move[player_id] > 0
 
     def delete_player(self, player):
         print("[Server] Deleting Player" + str(player.addr))
@@ -334,7 +333,7 @@ class GameServer(Server):
         [player.Send(data) for player in self.players]
 
     def launch_server(self):
-        global running
+        running = True
         while running:
             self.Pump()
             try:
