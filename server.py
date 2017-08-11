@@ -17,7 +17,7 @@ class Item:
     def __init__(self):
         self.id = Item.id
         Item.id += 1
-        self.useragent = "undefined"
+
         ClientChannel.items[self.id] = self
 
         # Type?
@@ -97,6 +97,8 @@ class ClientChannel(Channel):
         # If there are to many users which did not yet
         # enter a username (= anonymous) | Random: v v v v v v v
         self.player_name = "anonymous" + str(random.randrange(0, 101, 2))
+
+        self.useragent = "undefined"
 
         self.id = ClientChannel.free_x
         self.x = ClientChannel.free_x
