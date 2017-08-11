@@ -38,7 +38,7 @@ class Item:
             self.y = random.randint(1, len(ClientChannel.dungeon[self.z]) - 1)
             self.x = random.randint(1, len(ClientChannel.dungeon[self.z][-1]) - 1)
             if not ClientChannel.wall_check(0, self.x, self.y, self.z) \
-                    and ClientChannel.staircase_check(0, self.x, self.y, self.z):
+                    and not ClientChannel.staircase_check(0, self.x, self.y, self.z):
                 break
         else:
             print("Couldn't find appropriate place for " + self.name + ", is the dungeon too small?")
@@ -60,15 +60,15 @@ class Item:
 
 
 def get_items_at(x, y, z):
-    retItems = []
+    return_items = []
     for item in ClientChannel.items.values():
         if item.playerInventoryChar != '':
             continue
         if item.x == x and item.y == y and item.z == z:
-            retItems.append(item)
-    if len(retItems) == 0:
+            return_items.append(item)
+    if len(return_items) == 0:
         return False
-    return retItems
+    return return_items
 
 
 class ClientChannel(Channel):
@@ -172,16 +172,24 @@ class ClientChannel(Channel):
         if self.wall_check(self.x + dx, self.y + dy, self.z):
             self.Send({"action": "system_message", "message": "You bumped into the incredible wall."})
             dx, dy = 0, 0
-        if self.player_check(self.x + dx, self.y + dy, self.z):
+        elif self.player_check(self.x + dx, self.y + dy, self.z):
             self.Send({"action": "system_message", "message": "You bumped into the other player, he hates ya now."})
             dx, dy = 0, 0
-        if get_items_at(self.x + dx, self.y + dy, self.z):
+        elif get_items_at(self.x + dx, self.y + dy, self.z):
             items = get_items_at(self.x + dx, self.y + dy, self.z)
             for item in items:
                 item.pickup(self.char)
                 self.Send({"action": "system_message", "message": "You found a: {}.".format(item.name)})
+        elif self.staircase_check(self.x + dx, self.y + dy, self.z):
+            print("Player walks to staircase")
+            if ClientChannel.dungeon[self.z][self.y + dy][self.x + dx] == "/":
+                self.Send({"action": "system_message", "message": "You walked the stair up"})
+                self.z += 1
+            elif ClientChannel.dungeon[self.z][self.y + dy][self.x + dx] == "\\":
+                self.Send({"action": "system_message", "message": "You walked the stair down"})
+                self.z -= 1
 
-        print("Spieler: " + str(len(self._server.players)))
+        #print("Online players: " + str(len(self._server.players)))
 
         # self.x += -dx
         # self.y += -dy
@@ -217,10 +225,11 @@ class ClientChannel(Channel):
             if item.z == self.z and item.playerInventoryChar == '':
                 the_dungeon[item.y][item.x] = item.char
         for player in self._server.players:
-            the_dungeon[player.y][player.x] = player.char
+            if player.z == self.z:
+                the_dungeon[player.y][player.x] = player.char
 
-        # self.Send({"action": "got_dungeon", "the_dungeon": the_dungeon})
-        self._server.send_to_all({"action": "got_dungeon", "the_dungeon": the_dungeon})
+        self.Send({"action": "got_dungeon", "the_dungeon": the_dungeon})
+        # self._server.send_to_all({"action": "got_dungeon", "the_dungeon": the_dungeon})
 
     def wall_check(self, x, y, z):
         return ClientChannel.dungeon[z][y][x] == "#"
@@ -233,7 +242,7 @@ class ClientChannel(Channel):
         return False
 
     def staircase_check(self, x, y, z):
-        return ClientChannel.dungeon[z][y][x] == "/" or "\\"
+        return ClientChannel.dungeon[z][y][x] == "/" or ClientChannel.dungeon[z][y][x] ==  "\\"
 
     def get_player_dungeon(self):
         return ClientChannel.dungeon[self.z]
@@ -249,7 +258,7 @@ class ClientChannel(Channel):
         # keine Objekte senden
 
         items = [(item.id, item.name) for item in ClientChannel.items.values() if item.playerInventoryChar == self.char]
-        print(("Player \"{}\" requested his inventory: " + str(items)).format(self.player_name))
+        print(("[Server] Player \"{}\" requested his inventory: " + str(items)).format(self.player_name))
         self.Send({"action": "got_inventory", "inventory": items})
 
     def Network_drop(self, data):
