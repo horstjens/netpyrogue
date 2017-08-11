@@ -46,8 +46,8 @@ class Item:
         print("[Server] Produced item \"" + self.name + "\" at z:" + str(self.z) + ", y:" + str(self.y) + ", x:" + str(
                 self.x) + ".")
 
-    def pickup(self, playerchar):
-        self.playerInventoryChar = playerchar
+    def pickup(self, player_character):
+        self.playerInventoryChar = player_character
         self.x = None
         self.y = None
         self.z = None
@@ -80,7 +80,7 @@ class ClientChannel(Channel):
 
     dungeon = []
 
-    movings = {
+    player_movements = {
         1: (0, -1),
         2: (1, -1),
         3: (1, 0),
@@ -91,7 +91,7 @@ class ClientChannel(Channel):
         8: (-1, -1)
     }
 
-    # free_y = 0 # Maps werden circa 80 x lang sein, free_y wird gerade nicht gebraucht
+    # free_y = 0 # Maps will be at least 80 tiles long at the x-axis, free_y is not currently important
 
     def __init__(self, *args, **kwargs):
         print("[Server] Initializing player...")
@@ -99,7 +99,7 @@ class ClientChannel(Channel):
         # enter a username (= anonymous) | Random: v v v v v v v
         self.player_name = "anonymous" + str(random.randrange(0, 101, 2))
 
-        self.useragent = "undefined"
+        self.user_agent = "undefined"
 
         self.id = ClientChannel.free_x
         self.x = ClientChannel.free_x
@@ -132,11 +132,11 @@ class ClientChannel(Channel):
         self._server.send_to_all({"action": "chat", "chat": message, "who": self.player_name})
 
     def Network_useragent(self, data):
-        self.useragent = data['agent_string']
-        print("[Server] Player ID: " + str(self.id) + " connected using \"" + self.useragent + "\".")
+        self.user_agent = data['agent_string']
+        print("[Server] Player ID: " + str(self.id) + " connected using \"" + self.user_agent + "\".")
 
     def Network_nickname(self, data):
-        if self.useragent != "undefined":
+        if self.user_agent != "undefined":
             for p in self._server.players:
                 if p.player_name.lower() == data['player_name'].lower():
                     self.Send({"action": "system_message", "message": "There's already another player with this name."})
@@ -168,7 +168,7 @@ class ClientChannel(Channel):
         print("[Server] Player \"" + self.player_name + "\" moved to Direction \"" + Directions(
                 data['direction']).name + "\".")
 
-        dx, dy = ClientChannel.movings[data['direction']]
+        dx, dy = ClientChannel.player_movements[data['direction']]
         if self.wall_check(self.x + dx, self.y + dy, self.z):
             self.Send({"action": "system_message", "message": "You bumped into the incredible wall."})
             dx, dy = 0, 0
@@ -272,8 +272,8 @@ class ClientChannel(Channel):
         self.Send({"action": "server_message", "message": message})
 
     def Network_request_inventory(self, data):
-        # items = [item for item in ClientChannel.items.values() if item.playerInventoryChar == self.char] # Kann
-        # keine Objekte senden
+        # items = [item for item in ClientChannel.items.values() if item.playerInventoryChar == self.char] # Can't
+        # send objects
 
         items = [(item.id, item.name) for item in ClientChannel.items.values() if item.playerInventoryChar == self.char]
         print(("[Server] Player \"{}\" requested his inventory: " + str(items)).format(self.player_name))
@@ -304,7 +304,7 @@ class GameServer(Server):
         self.players = WeakKeyDictionary()
         print("[Server] Server launched")
 
-    def Connected(self, channel, addr):
+    def Connected(self, channel, address):
         self.add_player(channel)
 
     def add_player(self, player):
