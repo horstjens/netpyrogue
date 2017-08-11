@@ -6,30 +6,31 @@ from time import sleep
 from Directions import Directions
 from lib.PodSixNet_Library.Connection import connection, ConnectionListener
 
-global debug
-debug = False
 global running
 running = True
 
 
 class Client(ConnectionListener):
-    def __init__(self, host, port):
+    def __init__(self, host_ip, host_port):
+
+        self.debug = False
+
         self.player_name = None
-        self.Connect((host, port))
+        self.Connect((host_ip, host_port))
         connection.Send({"action": "useragent", "agent_string": "netpyroge_terminal-0.1"})
         print("Enter your nickname: ")
         player_name = stdin.readline().rstrip("\n")
         connection.Send({"action": "nickname", "player_name": player_name})
         self.inventory = {}
         self.equipped_items = {}
-        t = start_new_thread(self.InputLoop, ())
+        t = start_new_thread(self.input_loop, ())
 
-    def ClientGameLoop(self):
+    def client_game_loop(self):
         connection.Pump()
         self.Pump()
 
-    def InputLoop(self):
-        # continually reads from stdin and sends whatever is typed to the server
+    def input_loop(self):
+        # continually reads from standard input and sends whatever is typed to the server
         while True:
             connection.Send({"action": "request_cords", "abc": "xyz"})
             connection.Send({"action": "request_dungeon", "abc": "xyz"})
@@ -40,27 +41,27 @@ class Client(ConnectionListener):
                 connection.Send({"action": "chat", "chat": input_string})
             elif input_string.split(" ")[0] == "drop":
                 try:
-                    id = int(input_string.split(" ")[1])
+                    item_id = int(input_string.split(" ")[1])
                 except ValueError:
                     print("mount /dev/brain")
                     return
-                connection.Send({"action": "drop", "item": id})
+                connection.Send({"action": "drop", "item": item_id})
             elif input_string.startswith("w"):
                 print("Going north")
                 for i in range(input_string.count("w", 0, len(input_string))):
-                    self.sendMove(Directions.North.value)
+                    self.send_move(Directions.North.value)
             elif input_string.startswith("a"):
                 print("Going west")
                 for i in range(input_string.count("a", 0, len(input_string))):
-                    self.sendMove(Directions.West.value)
+                    self.send_move(Directions.West.value)
             elif input_string.startswith("s"):
                 print("Going south")
                 for i in range(input_string.count("s", 0, len(input_string))):
-                    self.sendMove(Directions.South.value)
+                    self.send_move(Directions.South.value)
             elif input_string.startswith("d"):
                 print("Going east")
                 for i in range(input_string.count("d", 0, len(input_string))):
-                    self.sendMove(Directions.East.value)
+                    self.send_move(Directions.East.value)
             elif input_string == "i":
                 print("Your inventory:")
                 for item in self.inventory:
@@ -71,7 +72,7 @@ class Client(ConnectionListener):
     # Network event/chat callbacks
 
     def Network_got_cords(self, data):
-        cordinates = data['x_cordinates'], data['y_cordinates']
+        coordinates = data['x_coordinates'], data["y_coordinates"]
 
     def Network_got_inventory(self, data):
         self.inventory = data['inventory']
@@ -85,7 +86,7 @@ class Client(ConnectionListener):
             # print("Dungeon:\n" + data['the_dungeon'])
 
     def Network_players(self, data):
-        if debug:
+        if self.debug:
             print("[Debug] *** players: " + ", ".join([p for p in data['players']]))
             # Any players named "anonymous" have not entered a player_name yet
 
@@ -104,7 +105,7 @@ class Client(ConnectionListener):
         print("[Server] Player " + data['player_name'] + " joined the game.")
 
     def Network_serverinfo(self, data):
-        print("[Server] My infos...")
+        print("[Server] My information's...")
 
     def Network_error(self, data):
         print('[System] error: ', data['error'][1])
@@ -115,7 +116,7 @@ class Client(ConnectionListener):
         global running
         running = False
 
-    def sendMove(self, direction):
+    def send_move(self, direction):
         connection.Send({"action": "playermove", "direction": direction})
 
 
@@ -129,7 +130,7 @@ if __name__ == '__main__':
         c = Client(host, int(port))
         print("[System] You are now connected to " + host + ":" + port + ".")
         while running:
-            c.ClientGameLoop()
+            c.client_game_loop()
             try:
                 sleep(0.001)
             except KeyboardInterrupt:
