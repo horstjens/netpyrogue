@@ -197,7 +197,8 @@ class ClientChannel(Channel):
         for player in self._server.players:
             the_dungeon[player.y][player.x] = player.char
 
-        self.Send({"action": "got_dungeon", "the_dungeon": the_dungeon})
+        #self.Send({"action": "got_dungeon", "the_dungeon": the_dungeon})
+        self._server.send_to_all({"action": "got_dungeon", "the_dungeon": the_dungeon})
 
     def wall_check(self, x, y, z):
         return ClientChannel.dungeon[z][y][x] == "#"
@@ -261,7 +262,7 @@ class GameServer(Server):
     def can_move(self, id):
         if len(self.players) == 1:
             return True
-        return time.time() - self.time_last_move[id] > 5
+        return time.time() - self.time_last_move[id] > 0
 
     def delete_player(self, player):
         print("[Server] Deleting Player" + str(player.addr))

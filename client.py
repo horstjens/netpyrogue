@@ -37,6 +37,13 @@ class Client(ConnectionListener):
             print("Input: " + input_string)
             if input_string.startswith("!"):
                 connection.Send({"action": "chat", "chat": input_string})
+            elif input_string.split(" ")[0] == "drop":
+                try:
+                    id = int(input_string.split(" ")[1])
+                except Exception:
+                    print("mount /dev/brain")
+                    return
+                connection.Send({"action": "drop", "item": id})
             elif input_string.startswith("w"):
                 print("Going north")
                 for i in range(input_string.count("w", 0, len(input_string))):
@@ -57,13 +64,6 @@ class Client(ConnectionListener):
                 print("Your inventory:")
                 for item in self.inventory:
                     print("- {}: {}".format(item[0], item[1]))
-            elif input_string.split(" ")[0] == "drop":
-                try:
-                    id = int(input_string.split(" ")[1])
-                except Exception:
-                    print("mount /dev/brain")
-                    return
-                connection.Send({"action": "drop", "item": id})
             else:
                 print("[System] Unrecognized input: " + input_string)
 
