@@ -101,11 +101,15 @@ ENV/
 .idea/**/workspace.xml
 .idea/**/tasks.xml
 .idea/dictionaries
+
+# whyy :(
+
 .idea
 .idea/*
 .idea/
 .idea/vcs.xml
-
+.idea/*.xml
+.idea/**
 
 
 # Sensitive or high-churn files:

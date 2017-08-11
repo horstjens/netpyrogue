@@ -4,6 +4,7 @@ import sys
 import time
 from weakref import WeakKeyDictionary
 
+from Directions import Directions
 from lib.PodSixNet_Library.Channel import Channel
 from lib.PodSixNet_Library.Server import Server
 
@@ -22,8 +23,8 @@ class Item:
 
         # Type?
 
-        self.name = random.choice(("Destruktive Zerstörungsenergie", "deaktivierte Netzwerkkarte", "GNU Lizenzbrief",
-                                   "Metasploit", "Rubber Ducky", "USB Rubber Ducky"))
+        self.name = random.choice(("destructive destruction energy", "disabled network card", "GNU license letter",
+                                   "exploitation framework", "Debug Rubber Ducky", "USB Rubber Ducky"))
         self.playerInventoryChar = ''
         self.isEquipped = False
         self.char = "*"
@@ -43,7 +44,7 @@ class Item:
         # print("y: " + str(self.y))
         # self.x = len(ClientChannel.dungeon[self.z - 1][-1])
         # print("x: " + str(self.x))
-        print("[Server] Produced \"" + self.name + "\" at z:" + str(self.z) + ", y:" + str(self.y) + ", x:" + str(
+        print("[Server] Produced item \"" + self.name + "\" at z:" + str(self.z) + ", y:" + str(self.y) + ", x:" + str(
                 self.x) + ".")
 
     def pickup(self, playerchar):
@@ -94,6 +95,7 @@ class ClientChannel(Channel):
     # free_y = 0 # Maps werden circa 80 x lang sein, free_y wird gerade nicht gebraucht
 
     def __init__(self, *args, **kwargs):
+        print("[Server] Initializing player...")
         # If there are to many users which did not yet
         # enter a username (= anonymous) | Random: v v v v v v v
         self.player_name = "anonymous" + str(random.randrange(0, 101, 2))
@@ -113,14 +115,13 @@ class ClientChannel(Channel):
 
         self.char = chr(self.x + 96)  # Ascii char code (97 - 172 = a - z)
 
-        self.inventory = {"Mysterious book": 1}
         self.hp = 100
-
+        print("[Server] Player initialized with char \"" + self.char + "\".")
         Channel.__init__(self, *args, **kwargs)
         self._server.time_last_move[self.id] = time.time()
 
     def Close(self):
-        print("[Server] Player \"" + self.player_name + "\" disconnected.")
+        print("[Server] Player \"" + self.player_name + "\" (\"" + self.char + "\") disconnected.")
         self._server.delete_player(self)
 
     # Network specific callbacks
@@ -133,17 +134,28 @@ class ClientChannel(Channel):
 
     def Network_useragent(self, data):
         self.useragent = data['agent_string']
-        print(str(self.id) + " connected using " + self.useragent)
+        print("[Server] Player ID: " + str(self.id) + " connected using \"" + self.useragent + "\".")
 
-
-    # Will be called when the player enters his nickname ==> PLAYERJOIN
     def Network_nickname(self, data):
         if self.useragent != "undefined":
+            for p in self._server.players:
+                if p.player_name.lower() == data['player_name'].lower():
+                    self.Send({"action": "system_message", "message": "There's already another player with this name."})
+                    self.Send({"action": "system_message", "message": "//faker"})
+                    self.Close()
+                    self.close()
+                    self.close_when_done()
+                    return
             self.player_name = data['player_name']
             self._server.publish_players()
             self.Network_playerjoin()
         else:
+            print("[Server] Player ID: " + str(self.id) + " sent a username (\"" + data['player_name'] + "\") before "
+                                                                                                         "sending his "
+                                                                                                         "useragent!")
             self.Close()
+            self.close()
+            self.close_when_done()
 
     def Network_playerjoin(self):
         print("[Server] Player \"" + self.player_name + "\" joined the game.")
@@ -151,10 +163,11 @@ class ClientChannel(Channel):
 
     def Network_playermove(self, data):
         if not self._server.can_move(self.id):
-            self.Send({"action": "system_message", "message": "You can not move yet"})
+            self.Send({"action": "system_message", "message": "You can not move yet."})
             return
 
-        print("[Server] Player \"" + self.player_name + "\" moved to Direction \"" + str(data['direction']) + "\".")
+        print("[Server] Player \"" + self.player_name + "\" moved to Direction \"" + Directions(
+                data['direction']).name + "\".")
 
         dx, dy = ClientChannel.movings[data['direction']]
         if self.wall_check(self.x + dx, self.y + dy, self.z):
@@ -178,7 +191,7 @@ class ClientChannel(Channel):
 
         print("[Server] Player \"" + self.player_name + "\" got new coordinates. dx: " + str(dx) + ", dy: " + str(dy),
               "x: " + str(self.x) + ", y: " + str(self.y) + ", z: " + str(self.z))
-        self._server.moved(self.id)
+        self._server.player_moved(self.id)
 
     def Network_request_cords(self, data):
         print("[Server] Player \"" + self.player_name + "\" requested coordinates.")
@@ -269,7 +282,7 @@ class GameServer(Server):
 
         print("[Server] players", [p for p in self.players])
 
-    def moved(self, id):
+    def player_moved(self, id):
         self.time_last_move[id] = time.time()
 
     def can_move(self, id):
@@ -307,21 +320,23 @@ if __name__ == '__main__':
         print("[Server] e.g.", sys.argv[0], "localhost:31425")
     else:
 
-        print("Reading dungeons...")
+        print("[Server] Reading dungeons...")
         for filename in os.listdir("data/maps"):
-            print("Found dungeon: " + filename)
+            print("[Server] Found dungeon: " + filename)
             dungeon_content = open("data/maps/" + filename, "r").read()
             ClientChannel.dungeon.append(dungeon_content)
-
+        print("[Server] Read dungeons, reassembling them for code use...")
         for z, dungeon in enumerate(ClientChannel.dungeon):
             d = []
             for line in dungeon.splitlines():
                 d.append(list(line))
             ClientChannel.dungeon[z] = d
-
-        for x in range(100):
+        item_count = 100
+        print("[Server] Reassembled dungeons, generating " + str(item_count) + " items...")
+        for x in range(item_count):
             Item()
         # print(ClientChannel.items)
+        print("[Server] Generated items, starting the game server...")
         host, port = sys.argv[1].split(":")
         s = GameServer(localaddr=(host, int(port)))
 

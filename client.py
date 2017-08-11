@@ -41,7 +41,7 @@ class Client(ConnectionListener):
             elif input_string.split(" ")[0] == "drop":
                 try:
                     id = int(input_string.split(" ")[1])
-                except Exception:
+                except ValueError:
                     print("mount /dev/brain")
                     return
                 connection.Send({"action": "drop", "item": id})
@@ -120,7 +120,7 @@ class Client(ConnectionListener):
 
 
 if __name__ == '__main__':
-    print("NetPyRouge client version: 0.1")
+    print("NetPyRogue client version: 0.1")
     if len(sys.argv) != 2:
         print("Usage:", sys.argv[0], "host:port")
         print("e.g.", sys.argv[0], "localhost:31425")
