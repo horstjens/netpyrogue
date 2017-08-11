@@ -16,6 +16,7 @@ class Client(ConnectionListener):
     def __init__(self, host, port):
         self.player_name = None
         self.Connect((host, port))
+        connection.Send({"action": "useragent", "agent_string": "netpyroge_terminal-0.1"})
         print("Enter your nickname: ")
         player_name = stdin.readline().rstrip("\n")
         connection.Send({"action": "nickname", "player_name": player_name})

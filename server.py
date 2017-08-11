@@ -17,7 +17,7 @@ class Item:
     def __init__(self):
         self.id = Item.id
         Item.id += 1
-
+        self.useragent = "undefined"
         ClientChannel.items[self.id] = self
 
         # Type?
@@ -129,11 +129,19 @@ class ClientChannel(Channel):
         print("[Server] Player \"" + self.player_name + "\" sent chat message \"" + message + "\".")
         self._server.send_to_all({"action": "chat", "chat": message, "who": self.player_name})
 
+    def Network_useragent(self, data):
+        self.useragent = data['agent_string']
+        print(str(self.id) + " connected using " + self.useragent)
+
+
     # Will be called when the player enters his nickname ==> PLAYERJOIN
     def Network_nickname(self, data):
-        self.player_name = data['player_name']
-        self._server.publish_players()
-        self.Network_playerjoin()
+        if self.useragent != "undefined":
+            self.player_name = data['player_name']
+            self._server.publish_players()
+            self.Network_playerjoin()
+        else:
+            self.Close()
 
     def Network_playerjoin(self):
         print("[Server] Player \"" + self.player_name + "\" joined the game.")
