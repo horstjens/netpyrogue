@@ -33,17 +33,16 @@ class Item:
         self.x = 0
         self.y = 0
 
-        while ClientChannel.wall_check(0, self.x, self.y, self.z):
+        for i in range(1000):
             self.z = random.randint(0, len(ClientChannel.dungeon) - 1)
             self.y = random.randint(1, len(ClientChannel.dungeon[self.z]) - 1)
             self.x = random.randint(1, len(ClientChannel.dungeon[self.z][-1]) - 1)
+            if not ClientChannel.wall_check(0, self.x, self.y, self.z) \
+                    and ClientChannel.staircase_check(0, self.x, self.y, self.z):
+                break
+        else:
+            print("Couldn't find appropriate place for " + self.name + ", is the dungeon too small?")
 
-        # self.z = len(ClientChannel.dungeon)
-        # print("z: " + str(self.z))
-        # self.y = len(ClientChannel.dungeon[self.z - 1])
-        # print("y: " + str(self.y))
-        # self.x = len(ClientChannel.dungeon[self.z - 1][-1])
-        # print("x: " + str(self.x))
         print("[Server] Produced item \"" + self.name + "\" at z:" + str(self.z) + ", y:" + str(self.y) + ", x:" + str(
                 self.x) + ".")
 
@@ -233,6 +232,9 @@ class ClientChannel(Channel):
                     return True
         return False
 
+    def staircase_check(self, x, y, z):
+        return ClientChannel.dungeon[z][y][x] == "/" or "\\"
+
     def get_player_dungeon(self):
         return ClientChannel.dungeon[self.z]
 
@@ -319,7 +321,6 @@ if __name__ == '__main__':
         print("[Server] Usage:", sys.argv[0], "host:port")
         print("[Server] e.g.", sys.argv[0], "localhost:31425")
     else:
-
         print("[Server] Reading dungeons...")
         for filename in os.listdir("data/maps"):
             print("[Server] Found dungeon: " + filename)
