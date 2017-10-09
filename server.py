@@ -9,6 +9,38 @@ from lib.PodSixNet_Library.Channel import Channel
 from lib.PodSixNet_Library.Server import Server
 
 
+class Monster:
+    id = 0
+
+    def __init__(self):
+        self.id = Monster.id
+        Monster.id += 1
+
+        self.name = random.choice(("Robert", "Albert", "Werner", "Günther", "Gustav"))
+
+        ClientChannel.monsters[self.id] = self
+
+        self.z = 0
+        self.x = 0
+        self.y = 0
+
+        for i in range(1000):
+            self.z = random.randint(0, len(ClientChannel.dungeon) - 1)
+            self.y = random.randint(1, len(ClientChannel.dungeon[self.z]) - 1)
+            self.x = random.randint(1, len(ClientChannel.dungeon[self.z][-1]) - 1)
+            if not wall_check(self.x, self.y, self.z) \
+                    and not staircase_check(self.x, self.y, self.z):
+                break
+        else:
+            print("Couldn't find appropriate place for " + self.name + ", is the dungeon too small?")
+
+        print("Spawned monster \"" + self.name + "\" at z:" + str(self.z) + ", y:" + str(self.y) + ", x:" + str(
+            self.x) + ".")
+
+        def fight_against(player):
+            print("Fighting against", str(player.id))
+
+
 class Item:
     id = 0
 
@@ -41,7 +73,7 @@ class Item:
             print("Couldn't find appropriate place for " + self.name + ", is the dungeon too small?")
 
         print("[Server] Produced item \"" + self.name + "\" at z:" + str(self.z) + ", y:" + str(self.y) + ", x:" + str(
-                self.x) + ".")
+            self.x) + ".")
 
     def pickup(self, player_character):
         self.playerInventoryChar = player_character
@@ -76,12 +108,20 @@ def staircase_check(x, y, z):
     return ClientChannel.dungeon[z][y][x] == "/" or ClientChannel.dungeon[z][y][x] == "\\"
 
 
+def monster_check(x, y, z):
+    for monster in ClientChannel.monsters.values():
+        if monster.x == x and monster.y == y and monster.z == z:
+            return monster
+    return False
+
+
 class ClientChannel(Channel):
     """Game client representation"""
 
     free_x = 1
 
     items = {}
+    monsters = {}
 
     dungeon = []
 
@@ -128,7 +168,6 @@ class ClientChannel(Channel):
         print("[Server] Player \"" + self.player_name + "\" (\"" + self.char + "\") disconnected.")
         self._server.delete_player(self)
 
-
     def Network_chat(self, data):
         message = data['chat']
         message = message[1:]
@@ -170,7 +209,7 @@ class ClientChannel(Channel):
             return
 
         print("[Server] Player \"" + self.player_name + "\" moved to Direction \"" + Directions(
-                data['direction']).name + "\".")
+            data['direction']).name + "\".")
 
         dx, dy = ClientChannel.player_movements[data['direction']]
         if wall_check(self.x + dx, self.y + dy, self.z):
@@ -179,6 +218,10 @@ class ClientChannel(Channel):
         elif self.player_check(self.x + dx, self.y + dy, self.z):
             self.Send({"action": "system_message", "message": "You bumped into the other player, he hates ya now."})
             dx, dy = 0, 0
+        elif monster_check(self.x + dx, self.y + dy, self.z):
+            monster = monster_check(self.x + dx, self.y + dy, self.z)
+            monster.fight_against(self)
+            # MONSTER HIER
         elif get_items_at(self.x + dx, self.y + dy, self.z):
             items = get_items_at(self.x + dx, self.y + dy, self.z)
             for item in items:
@@ -209,7 +252,7 @@ class ClientChannel(Channel):
 
     def Network_request_cords(self, data):
         print("[Server] Player \"" + self.player_name + "\" requested coordinates.")
-        self.Send({"action":        "got_cords",
+        self.Send({"action": "got_cords",
                    "x_coordinates": [p.x for p in self._server.players if p.player_name == self.player_name],
                    "y_coordinates": [p.y for p in self._server.players if p.player_name == self.player_name],
                    })
@@ -299,11 +342,11 @@ class GameServer(Server):
         self.add_player(channel)
 
     def add_player(self, player):
-        print("[Server] New Player" + str(player.addr))
+        print("[Server] New Player: " + str(player.addr))
         self.players[player] = True
         # self.publish_players()
 
-        print("[Server] players", [p for p in self.players])
+        print("[Server] Current players: ", [p for p in self.players])
 
     def player_moved(self, player_id):
         self.time_last_move[player_id] = time.time()
@@ -357,6 +400,9 @@ if __name__ == '__main__':
         print("[Server] Reassembled dungeons, generating " + str(item_count) + " items...")
         for x in range(item_count):
             Item()
+        monster_count = 20
+        for x in range(monster_count):
+            Monster()
         # print(ClientChannel.items)
         print("[Server] Generated items, starting the game server...")
         host, port = sys.argv[1].split(":")
