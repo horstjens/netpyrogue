@@ -44,7 +44,7 @@ class Client(ConnectionListener):
                     item_id = int(input_string.split(" ")[1])
                 except ValueError:
                     print("mount /dev/brain")
-                    return
+                    continue
                 connection.Send({"action": "drop", "item": item_id})
             elif input_string.startswith("w"):
                 print("Going north")
