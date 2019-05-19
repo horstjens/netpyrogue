@@ -1,5 +1,7 @@
 > Legende:
 
+## Todo: Convert to english
+
 >> Böden:
 
 >>> #: Mauer
@@ -25,8 +27,26 @@
 >>> U: Sicherheitsschleußentür (man kann nur von oben nach unten gehen)
 >>> {: Tresortüre (kann man nur von links aufschließen)
 >>> }: Tresortüre (kann man nur von rechts aufschließen)
+>>> L: Locked door without key
+>>> P: Unlocked door
 
 >> Barrikaden:
 
 >>> [
 >>> ]
+
+>> Objects:
+
+>>> C: Chest
+>>> O: Chair
+>>> T: Table
+>>> B: Bed
+
+>> NPCs
+
+>>> G: Guard, defends against monsters in a radius of 5 tiles
+>>> N: Dorfbewohner
+>>> D: Dumb Monster, runs around randomly
+>>> M: Normal Monster, follows the player in a radius of 5 tiles
+>>> B: Boss, follows the player around in the whole dungeon
+>>> %: Merchant

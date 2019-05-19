@@ -1,0 +1,8 @@
+Monsters
+Connect before asking for nickname
+Handle ConnectionRefusedError
+Catch <class 'IndexError'>:list index out of range when walking up stairs when there isn't another level
+Help screen
+
+
+Don't ask for the inventory all the time, only when an item changed
